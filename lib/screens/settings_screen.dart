@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -74,7 +75,7 @@ class SettingsScreen extends ConsumerWidget {
                   SizedBox(width: 10),
                   Text(
                     'Re-Authenticate',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 18),
                   ),
                 ],
               ),
@@ -90,7 +91,7 @@ class SettingsScreen extends ConsumerWidget {
                   TextField(
                     controller: passwordController,
                     obscureText: obscurePassword,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       labelText: 'Password',
                       labelStyle: const TextStyle(color: AppColors.textMuted),
@@ -1025,6 +1026,11 @@ class _EditProfileModalState extends ConsumerState<_EditProfileModal> {
             // Name Field
             TextField(
               controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                TitleCaseTextInputFormatter(),
+              ],
               decoration: InputDecoration(
                 labelText: 'Full Name',
                 prefixIcon: const Icon(Icons.person_outline, color: AppColors.settingsAccent),
@@ -1371,6 +1377,42 @@ class _EditProfileModalState extends ConsumerState<_EditProfileModal> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class TitleCaseTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+
+    final String text = newValue.text;
+    final StringBuffer buffer = StringBuffer();
+    bool capitalizeNext = true;
+
+    for (int i = 0; i < text.length; i++) {
+      final char = text[i];
+      if (char == ' ') {
+        capitalizeNext = true;
+        buffer.write(char);
+      } else if (capitalizeNext && RegExp(r'[a-zA-Z]').hasMatch(char)) {
+        buffer.write(char.toUpperCase());
+        capitalizeNext = false;
+      } else {
+        buffer.write(char);
+        if (RegExp(r'[a-zA-Z0-9]').hasMatch(char)) {
+          capitalizeNext = false;
+        }
+      }
+    }
+
+    final String formatted = buffer.toString();
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

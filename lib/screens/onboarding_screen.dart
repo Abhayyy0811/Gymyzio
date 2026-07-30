@@ -505,7 +505,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
     final detectedName = currentUser?.displayName ?? (currentProfile.name != 'Athlete' ? currentProfile.name : '');
     if (_nameController.text.trim().isEmpty && detectedName.isNotEmpty) {
-      _nameController.text = detectedName;
+      _nameController.text = toTitleCase(detectedName);
     }
 
     final currentUnit = currentProfile.unitSystem;
@@ -581,8 +581,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     TextFormField(
                       controller: _nameController,
                       focusNode: _nameFocusNode,
+                      textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
                       onFieldSubmitted: (_) => _ageFocusNode.requestFocus(),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                        TitleCaseTextInputFormatter(),
+                      ],
                       decoration: InputDecoration(
                         hintText: 'Enter your full name',
                         hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
@@ -1565,7 +1570,11 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
 
     final isEmailValid = email.contains('@') || email.length >= 3;
     final isPhoneValid = phone.isNotEmpty && phone.length >= 7;
-    final isPasswordValid = password.length >= 6;
+    
+    final hasMinLength = password.length >= 6;
+    final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
+    final hasDigit = RegExp(r'\d').hasMatch(password);
+    final isPasswordValid = hasMinLength && hasLetter && hasDigit;
 
     setState(() {
       if (_isForgotPassword) {
@@ -1573,7 +1582,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
       } else if (_isChooseUsername) {
         _isFormValid = _isUsernameAvailable && !_isCheckingUsername;
       } else if (_isSignUp) {
-        final doPasswordsMatch = password == confirmPassword;
+        final doPasswordsMatch = password.isNotEmpty && password == confirmPassword;
         _isFormValid = isEmailValid && isPhoneValid && isPasswordValid && doPasswordsMatch;
       } else {
         final identifierValid = _isPhoneMode ? isPhoneValid : isEmailValid;
@@ -1616,13 +1625,27 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
       return;
     }
 
-    if (password.isEmpty || password.length < 6) {
-      setState(() => _passwordError = "Password must be at least 6 characters");
+    final hasMinLength = password.length >= 6;
+    final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
+    final hasDigit = RegExp(r'\d').hasMatch(password);
+
+    if (!hasMinLength || !hasLetter || !hasDigit) {
+      setState(() {
+        if (!hasMinLength) {
+          _passwordError = "Password must be at least 6 characters long";
+        } else if (!hasLetter) {
+          _passwordError = "Password must contain letters (A-Z, a-z)";
+        } else if (!hasDigit) {
+          _passwordError = "Password must contain numbers (0-9)";
+        }
+      });
       _passwordFocusNode.requestFocus();
       _passwordShakeKey.currentState?.shake();
       return;
     }
+
     if (confirmPassword != password) {
+      setState(() => _passwordError = "Passwords do not match");
       _confirmPasswordFocusNode.requestFocus();
       _confirmPasswordShakeKey.currentState?.shake();
       return;
@@ -2765,6 +2788,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
     final hasMinLength = password.length >= 6;
     final hasLetter = RegExp(r'[a-zA-Z]').hasMatch(password);
     final hasDigit = RegExp(r'\d').hasMatch(password);
+    final isStarted = password.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(top: 10, bottom: 4),
@@ -2786,22 +2810,36 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
             ),
           ),
           const SizedBox(height: 6),
-          _buildRequirementRow('At least 6 characters long', hasMinLength),
-          _buildRequirementRow('Contains letters (A-Z, a-z)', hasLetter),
-          _buildRequirementRow('Contains numbers (0-9)', hasDigit),
+          _buildRequirementRow('At least 6 characters long', hasMinLength, isStarted),
+          _buildRequirementRow('Contains letters (A-Z, a-z)', hasLetter, isStarted),
+          _buildRequirementRow('Contains numbers (0-9)', hasDigit, isStarted),
         ],
       ),
     );
   }
 
-  Widget _buildRequirementRow(String label, bool isMet) {
+  Widget _buildRequirementRow(String label, bool isMet, bool isStarted) {
+    IconData icon;
+    Color iconColor;
+
+    if (isMet) {
+      icon = Icons.check_circle_rounded;
+      iconColor = Colors.green;
+    } else if (isStarted) {
+      icon = Icons.cancel_rounded; // Red cross icon when requirement is not satisfied!
+      iconColor = Colors.redAccent;
+    } else {
+      icon = Icons.radio_button_unchecked_rounded;
+      iconColor = AppColors.textMuted;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Icon(
-            isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-            color: isMet ? Colors.green : AppColors.textMuted,
+            icon,
+            color: iconColor,
             size: 16,
           ),
           const SizedBox(width: 8),
@@ -2809,7 +2847,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
             child: Text(
               label,
               style: TextStyle(
-                color: isMet ? AppColors.textPrimary : AppColors.textMuted,
+                color: isMet ? Colors.green : (isStarted ? Colors.redAccent : AppColors.textMuted),
                 fontSize: 12,
                 fontWeight: isMet ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -3101,3 +3139,47 @@ const List<CountryCallingCode> kCountryCallingCodes = [
   CountryCallingCode(code: '+7', country: 'Russia', flag: '🇷🇺'),
   CountryCallingCode(code: '+90', country: 'Turkey', flag: '🇹🇷'),
 ];
+
+String toTitleCase(String text) {
+  if (text.trim().isEmpty) return text;
+  return text.split(' ').map((word) {
+    if (word.isEmpty) return word;
+    return word[0].toUpperCase() + word.substring(1);
+  }).join(' ');
+}
+
+class TitleCaseTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+
+    final String text = newValue.text;
+    final StringBuffer buffer = StringBuffer();
+    bool capitalizeNext = true;
+
+    for (int i = 0; i < text.length; i++) {
+      final char = text[i];
+      if (char == ' ') {
+        capitalizeNext = true;
+        buffer.write(char);
+      } else if (capitalizeNext && RegExp(r'[a-zA-Z]').hasMatch(char)) {
+        buffer.write(char.toUpperCase());
+        capitalizeNext = false;
+      } else {
+        buffer.write(char);
+        if (RegExp(r'[a-zA-Z0-9]').hasMatch(char)) {
+          capitalizeNext = false;
+        }
+      }
+    }
+
+    final String formatted = buffer.toString();
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
