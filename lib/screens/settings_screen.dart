@@ -226,16 +226,50 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    final profile = ref.read(userProfileProvider);
+    final String uid = (currentUser?.uid != null && currentUser!.uid.isNotEmpty)
+        ? currentUser.uid
+        : (profile.uid ?? '');
 
-    final uid = currentUser.uid;
+    if (uid.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No active account session found.')),
+        );
+      }
+      return;
+    }
 
-    try {
+    void showLoadingOverlay() {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: const Row(
+            children: [
+              CircularProgressIndicator(color: Colors.redAccent),
+              SizedBox(width: 20),
+              Expanded(
+                child: Text('Deleting account & data...', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    showLoadingOverlay();
+
+    Future<void> completeAccountWipe() async {
       // 1. Delete Firestore user document & subcollections
       await ref.read(userProfileServiceProvider).deleteUserProfile(uid);
 
       // 2. Delete Firebase Auth User account
-      await currentUser.delete();
+      if (currentUser != null) {
+        await currentUser.delete();
+      }
 
       // 3. Remove account from local device AccountRegistryService
       await ref.read(accountRegistryServiceProvider).removeAccount(uid);
@@ -245,54 +279,55 @@ class SettingsScreen extends ConsumerWidget {
       ref.read(userActivityProvider.notifier).reset();
       await ref.read(authServiceProvider).signOut();
 
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Account deleted successfully'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      context.go('/onboarding');
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading overlay
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        context.go('/onboarding');
+      }
+    }
+
+    try {
+      await completeAccountWipe();
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading overlay
+      }
+      if (e.code == 'requires-recent-login' && currentUser != null) {
         if (!context.mounted) return;
         final bool reauthenticated = await _showInPlaceReauthDialog(context, currentUser);
         if (reauthenticated) {
+          if (!context.mounted) return;
+          showLoadingOverlay();
           try {
-            await ref.read(userProfileServiceProvider).deleteUserProfile(uid);
-            await currentUser.delete();
-            await ref.read(accountRegistryServiceProvider).removeAccount(uid);
-
-            ref.read(userProfileProvider.notifier).reset();
-            ref.read(userActivityProvider.notifier).reset();
-            await ref.read(authServiceProvider).signOut();
-
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Account deleted successfully'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-            context.go('/onboarding');
+            await completeAccountWipe();
           } catch (retryErr) {
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to delete account: ${retryErr.toString()}')),
-            );
+            if (context.mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to delete account: ${retryErr.toString()}')),
+              );
+            }
           }
         }
       } else {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete account: ${e.message}')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete account: ${e.message}')),
+          );
+        }
       }
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete account: ${e.toString()}')),
-      );
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading overlay
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete account: ${e.toString()}')),
+        );
+      }
     }
   }
 

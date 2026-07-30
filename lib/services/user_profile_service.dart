@@ -236,29 +236,33 @@ class UserProfileService {
   /// Delete user profile document and subcollections in Firestore
   Future<void> deleteUserProfile(String uid) async {
     if (uid.isEmpty) return;
-    try {
-      final userDoc = _firestore.collection('users').doc(uid);
-      
-      // Delete subcollections if any (e.g. workouts, personalRecords, activity, badges, etc.)
-      final subcollections = ['workouts', 'personalRecords', 'activity', 'badges', 'history', 'settings'];
-      for (final sub in subcollections) {
+    final userDoc = _firestore.collection('users').doc(uid);
+
+    // 1. Safe deletion of subcollections
+    final subcollections = ['workouts', 'personalRecords', 'activity', 'badges', 'history', 'settings'];
+    for (final sub in subcollections) {
+      try {
         final snapshots = await userDoc.collection(sub).get();
         for (final doc in snapshots.docs) {
           await doc.reference.delete();
         }
+      } catch (subErr) {
+        if (kDebugMode) {
+          print('⚠️ [deleteUserProfile] Subcollection $sub error (ignored): $subErr');
+        }
       }
+    }
 
-      // Delete main user document from Firestore
+    // 2. Safe deletion of main user document
+    try {
       await userDoc.delete();
-
       if (kDebugMode) {
         print('✅ [deleteUserProfile] Firestore document users/$uid deleted successfully.');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ [deleteUserProfile] Error deleting Firestore user profile: $e');
+        print('⚠️ [deleteUserProfile] Main doc deletion error: $e');
       }
-      rethrow;
     }
   }
 }
