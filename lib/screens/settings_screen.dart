@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../services/account_registry_service.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state_providers.dart';
 import '../providers/app_settings_provider.dart';
@@ -26,6 +28,165 @@ class SettingsScreen extends ConsumerWidget {
       ),
       builder: (ctx) => _EditProfileModal(profile: profile),
     );
+  }
+
+  Future<bool> _showInPlaceReauthDialog(BuildContext context, User currentUser) async {
+    final isGoogleUser = currentUser.providerData.any((p) => p.providerId == 'google.com');
+
+    if (isGoogleUser) {
+      try {
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) return false;
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await currentUser.reauthenticateWithCredential(credential);
+        return true;
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Google re-authentication failed: ${e.toString()}')),
+          );
+        }
+        return false;
+      }
+    }
+
+    final passwordController = TextEditingController();
+    String? errorMessage;
+    bool isLoading = false;
+    bool obscurePassword = true;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 26),
+                  SizedBox(width: 10),
+                  Text(
+                    'Re-Authenticate',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'For security reasons, please enter your password to confirm account deletion.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: const TextStyle(color: AppColors.textMuted),
+                      prefixIcon: const Icon(Icons.lock_rounded, color: AppColors.primary),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surfaceLight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      errorMessage!,
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final password = passwordController.text.trim();
+                          if (password.isEmpty) {
+                            setState(() => errorMessage = 'Please enter your password');
+                            return;
+                          }
+                          setState(() {
+                            isLoading = true;
+                            errorMessage = null;
+                          });
+
+                          try {
+                            final email = currentUser.email ?? '';
+                            if (email.isEmpty) {
+                              throw Exception('No email associated with this account');
+                            }
+                            final credential = EmailAuthProvider.credential(
+                              email: email,
+                              password: password,
+                            );
+                            await currentUser.reauthenticateWithCredential(credential);
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx, true);
+                            }
+                          } on FirebaseAuthException catch (e) {
+                            setState(() {
+                              isLoading = false;
+                              if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+                                errorMessage = 'Incorrect password. Please try again.';
+                              } else {
+                                errorMessage = e.message ?? 'Authentication failed';
+                              }
+                            });
+                          } catch (e) {
+                            setState(() {
+                              isLoading = false;
+                              errorMessage = e.toString();
+                            });
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Confirm & Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return result ?? false;
   }
 
   Future<void> _handleDeleteAccount(BuildContext context, WidgetRef ref) async {
@@ -76,7 +237,10 @@ class SettingsScreen extends ConsumerWidget {
       // 2. Delete Firebase Auth User account
       await currentUser.delete();
 
-      // 3. Clean up Riverpod state and sign out
+      // 3. Remove account from local device AccountRegistryService
+      await ref.read(accountRegistryServiceProvider).removeAccount(uid);
+
+      // 4. Clean up Riverpod state and sign out
       ref.read(userProfileProvider.notifier).reset();
       ref.read(userActivityProvider.notifier).reset();
       await ref.read(authServiceProvider).signOut();
@@ -90,27 +254,36 @@ class SettingsScreen extends ConsumerWidget {
       );
       context.go('/onboarding');
     } on FirebaseAuthException catch (e) {
-      if (!context.mounted) return;
       if (e.code == 'requires-recent-login') {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Re-Authentication Required', style: TextStyle(fontWeight: FontWeight.bold)),
-            content: const Text(
-              'For security reasons, deleting your account requires recent authentication. Please sign out and sign back in, then retry deleting your account.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.4),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK', style: TextStyle(color: AppColors.primary)),
+        if (!context.mounted) return;
+        final bool reauthenticated = await _showInPlaceReauthDialog(context, currentUser);
+        if (reauthenticated) {
+          try {
+            await ref.read(userProfileServiceProvider).deleteUserProfile(uid);
+            await currentUser.delete();
+            await ref.read(accountRegistryServiceProvider).removeAccount(uid);
+
+            ref.read(userProfileProvider.notifier).reset();
+            ref.read(userActivityProvider.notifier).reset();
+            await ref.read(authServiceProvider).signOut();
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Account deleted successfully'),
+                backgroundColor: Colors.redAccent,
               ),
-            ],
-          ),
-        );
+            );
+            context.go('/onboarding');
+          } catch (retryErr) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to delete account: ${retryErr.toString()}')),
+            );
+          }
+        }
       } else {
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to delete account: ${e.message}')),
         );
