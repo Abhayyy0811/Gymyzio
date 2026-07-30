@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_profile.dart';
+import '../models/workout_session.dart';
 import '../utils/phone_utils.dart';
 
 class UserProfileService {
@@ -264,5 +265,49 @@ class UserProfileService {
         print('⚠️ [deleteUserProfile] Main doc deletion error: $e');
       }
     }
+  }
+
+  /// Real-Time Workout History Persistence
+  Future<void> saveCompletedWorkout(String uid, CompletedWorkout workout) async {
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('workouts')
+          .doc(workout.id)
+          .set(workout.toMap());
+    } catch (e) {
+      if (kDebugMode) print('⚠️ [saveCompletedWorkout] Error: $e');
+    }
+  }
+
+  Stream<List<CompletedWorkout>> streamCompletedWorkouts(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('workouts')
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => CompletedWorkout.fromMap(doc.data())).toList());
+  }
+
+  /// Real-Time Body Weight Log Persistence
+  Future<void> logBodyWeight(String uid, double weightKg) async {
+    try {
+      await _firestore.collection('users').doc(uid).collection('body_weight_logs').add({
+        'date': DateTime.now().toIso8601String(),
+        'weightKg': weightKg,
+      });
+    } catch (e) {
+      if (kDebugMode) print('⚠️ [logBodyWeight] Error: $e');
+    }
+  }
+
+  Stream<List<BodyWeightLog>> streamBodyWeightLogs(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('body_weight_logs')
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => BodyWeightLog.fromMap(doc.data())).toList());
   }
 }

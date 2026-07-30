@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state_providers.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/rest_timer_widget.dart';
 import '../widgets/shine_button.dart';
 import '../models/workout_session.dart';
@@ -427,6 +429,20 @@ class _WorkoutLoggingScreenState extends ConsumerState<WorkoutLoggingScreen> {
                 isCardio: isCardio,
                 isStrength: isStrength,
               );
+
+              final user = FirebaseAuth.instance.currentUser;
+              if (user != null && workoutList.isNotEmpty) {
+                final completedWorkout = CompletedWorkout(
+                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                  userId: user.uid,
+                  workoutTitle: 'Daily Workout',
+                  date: DateTime.now(),
+                  durationMinutes: 45,
+                  exercises: List.from(workoutList),
+                );
+                ref.read(userProfileServiceProvider).saveCompletedWorkout(user.uid, completedWorkout);
+              }
+
               ref.read(activeWorkoutProvider.notifier).clearWorkout();
 
               Navigator.of(dialogCtx).pop();

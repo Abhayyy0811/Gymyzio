@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state_providers.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/auth_provider.dart';
-import '../data/dummy_data.dart';
+import '../models/workout_session.dart';
 import '../utils/unit_converter.dart';
 import '../utils/body_metrics_calculator.dart';
 
@@ -21,12 +22,19 @@ class ProgressScreen extends ConsumerWidget {
     final unitSystem = ref.watch(appUnitSystemProvider);
     final profile = ref.watch(userProfileProvider);
 
+    final completedWorkoutsAsync = ref.watch(completedWorkoutsProvider);
+    final bodyWeightLogsAsync = ref.watch(bodyWeightLogsProvider);
+
+    final completedWorkouts = completedWorkoutsAsync.value ?? [];
+    final bodyWeightLogs = bodyWeightLogsAsync.value ?? [];
+    final userActivity = ref.watch(userActivityProvider);
+
     final customBmi = ref.watch(customBmiOverrideProvider);
     final customBodyFat = ref.watch(customBodyFatOverrideProvider);
 
     const accentColor = AppColors.progressAccent;
 
-    // Calculate dynamic BMI
+    // Calculate dynamic BMI from real user profile
     final calculatedBmi = customBmi ??
         (profile.height > 0 && profile.weight > 0
             ? BodyMetricsCalculator.calculateBMI(
@@ -48,12 +56,72 @@ class ProgressScreen extends ConsumerWidget {
             : 15.4);
     final bodyFatCategory = BodyMetricsCalculator.getBodyFatCategory(calculatedBodyFat, isMale: true);
 
-    final rawPoints = DummyData.chartExerciseData[selectedExercise] ?? [50.0, 52.0, 55.0, 57.0, 60.0, 62.0];
-    final convertedChartPoints = rawPoints.map((kg) => UnitConverter.convertWeight(kg, unitSystem)).toList();
+    // Extract real exercise names from completed user workouts
+    final Set<String> loggedExerciseNames = {};
+    for (final w in completedWorkouts) {
+      for (final e in w.exercises) {
+        if (e.exerciseName.trim().isNotEmpty) {
+          loggedExerciseNames.add(e.exerciseName.trim());
+        }
+      }
+    }
+    final defaultExercises = ['Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Barbell Row'];
+    final allExerciseOptions = loggedExerciseNames.isNotEmpty ? loggedExerciseNames.toList() : defaultExercises;
+    final activeSelectedExercise = allExerciseOptions.contains(selectedExercise)
+        ? selectedExercise
+        : allExerciseOptions.first;
 
-    final rawBodyWeightPoints = DummyData.bodyWeightData;
-    final convertedBodyWeightPoints = rawBodyWeightPoints.map((kg) => UnitConverter.convertWeight(kg, unitSystem)).toList();
+    // Real strength points for selected exercise
+    final List<double> realExerciseMaxWeights = [];
+    for (final workout in completedWorkouts) {
+      final match = workout.exercises.firstWhere(
+        (e) => e.exerciseName.toLowerCase() == activeSelectedExercise.toLowerCase(),
+        orElse: () => WorkoutExercise(exerciseId: '', exerciseName: '', sets: []),
+      );
+      if (match.sets.isNotEmpty) {
+        double maxInSession = 0.0;
+        for (final s in match.sets) {
+          if (s.weightKg > maxInSession) maxInSession = s.weightKg;
+        }
+        if (maxInSession > 0) {
+          realExerciseMaxWeights.add(maxInSession);
+        }
+      }
+    }
 
+    final convertedChartPoints = realExerciseMaxWeights.isNotEmpty
+        ? realExerciseMaxWeights.map((kg) => UnitConverter.convertWeight(kg, unitSystem)).toList()
+        : <double>[];
+
+    // Real Body Weight Trend points
+    final List<double> realBodyWeightLogs = [];
+    for (final log in bodyWeightLogs) {
+      if (log.weightKg > 0) {
+        realBodyWeightLogs.add(log.weightKg);
+      }
+    }
+    if (realBodyWeightLogs.isEmpty && profile.weight > 0) {
+      realBodyWeightLogs.add(profile.weight);
+    }
+    final convertedBodyWeightPoints = realBodyWeightLogs.map((kg) => UnitConverter.convertWeight(kg, unitSystem)).toList();
+
+    // Dynamic Overall Volume & PR Calculations
+    double totalVolumeKg = 0.0;
+    double highestWeightLiftedKg = userActivity.maxWeightLiftedKg;
+    for (final w in completedWorkouts) {
+      for (final e in w.exercises) {
+        for (final s in e.sets) {
+          totalVolumeKg += (s.reps * s.weightKg);
+          if (s.weightKg > highestWeightLiftedKg) {
+            highestWeightLiftedKg = s.weightKg;
+          }
+        }
+      }
+    }
+
+    final displayTotalVolume = UnitConverter.convertWeight(totalVolumeKg, unitSystem).toStringAsFixed(0);
+    final displayHighestPR = UnitConverter.convertWeight(highestWeightLiftedKg, unitSystem).toStringAsFixed(1);
+    final totalLoggedCount = completedWorkouts.isNotEmpty ? completedWorkouts.length : userActivity.loggedWorkoutsCount;
     final weightUnitLabel = UnitConverter.weightUnit(unitSystem);
 
     return Container(
@@ -70,6 +138,44 @@ class ProgressScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Real-Time Lifetime Summary Banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.container),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  boxShadow: AppColors.softGlow(AppColors.primary, opacity: 0.12, blur: 14),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildQuickStatItem(
+                      label: 'Workouts',
+                      value: '$totalLoggedCount',
+                      icon: Icons.fitness_center_rounded,
+                      color: AppColors.primary,
+                    ),
+                    Container(height: 36, width: 1, color: AppColors.border),
+                    _buildQuickStatItem(
+                      label: 'Volume',
+                      value: '$displayTotalVolume $weightUnitLabel',
+                      icon: Icons.graphic_eq_rounded,
+                      color: AppColors.secondary,
+                    ),
+                    Container(height: 36, width: 1, color: AppColors.border),
+                    _buildQuickStatItem(
+                      label: 'Max PR',
+                      value: '$displayHighestPR $weightUnitLabel',
+                      icon: Icons.emoji_events_rounded,
+                      color: AppColors.accent,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
               // Exercise Selector Header Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -88,10 +194,10 @@ class ProgressScreen extends ConsumerWidget {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: selectedExercise,
+                        value: activeSelectedExercise,
                         dropdownColor: AppColors.surfaceLight,
                         icon: const Icon(Icons.arrow_drop_down, color: accentColor),
-                        items: DummyData.chartExerciseData.keys.map((exName) {
+                        items: allExerciseOptions.map((exName) {
                           return DropdownMenuItem(
                             value: exName,
                             child: Text(exName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -135,16 +241,54 @@ class ProgressScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 20),
 
-              // Strength Line Chart Card
+              // Strength Line Chart Card (Real User Data)
               _buildChartCard(
-                title: '$selectedExercise ${tr('weight_progress')} ($weightUnitLabel)',
+                title: '$activeSelectedExercise ${tr('weight_progress')} ($weightUnitLabel)',
                 accentColor: accentColor,
-                chartWidget: SizedBox(
-                  height: 200,
-                  child: LineChart(
-                    _createLineChartData(convertedChartPoints, accentColor),
-                  ),
-                ),
+                chartWidget: convertedChartPoints.isNotEmpty
+                    ? SizedBox(
+                        height: 200,
+                        child: LineChart(
+                          _createLineChartData(convertedChartPoints, accentColor),
+                        ),
+                      )
+                    : Container(
+                        height: 160,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.show_chart_rounded, color: AppColors.textMuted, size: 36),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No workout logs for "$activeSelectedExercise" yet',
+                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Log a workout to build your real-time strength progress curve live!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton.icon(
+                              onPressed: () => context.go('/workout-logging'),
+                              icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                              label: const Text('Log Workout Now', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               )
               .animate()
               .fadeIn(duration: 400.ms)
@@ -223,6 +367,28 @@ class ProgressScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildQuickStatItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 4),
+            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
   Widget _buildChartCard({
     required String title,
     required Color accentColor,
@@ -262,11 +428,24 @@ class ProgressScreen extends ConsumerWidget {
   }
 
   LineChartData _createLineChartData(List<double> points, Color color) {
-    final spots = points.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList();
+    if (points.isEmpty) {
+      return LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [],
+      );
+    }
+
+    final spots = points.length == 1
+        ? [FlSpot(0, points.first), FlSpot(1, points.first)]
+        : points.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList();
+
     final minVal = points.reduce((a, b) => a < b ? a : b);
     final maxVal = points.reduce((a, b) => a > b ? a : b);
     final minY = (minVal - 5).clamp(0.0, 1000.0);
     final maxY = maxVal + 5;
+    final maxX = (spots.length - 1).toDouble();
 
     return LineChartData(
       gridData: const FlGridData(
@@ -281,15 +460,11 @@ class ProgressScreen extends ConsumerWidget {
           sideTitles: SideTitles(
             showTitles: true,
             getTitlesWidget: (val, meta) {
-              final labels = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'];
               int idx = val.toInt();
-              if (idx >= 0 && idx < labels.length) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6.0),
-                  child: Text(labels[idx], style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
-                );
-              }
-              return const SizedBox();
+              return Padding(
+                padding: const EdgeInsets.only(top: 6.0),
+                child: Text('Log ${idx + 1}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
+              );
             },
           ),
         ),
@@ -308,7 +483,7 @@ class ProgressScreen extends ConsumerWidget {
       ),
       borderData: FlBorderData(show: false),
       minX: 0,
-      maxX: (points.length - 1).toDouble(),
+      maxX: maxX > 0 ? maxX : 1,
       minY: minY,
       maxY: maxY,
       lineBarsData: [

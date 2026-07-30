@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../services/user_profile_service.dart';
+import '../models/workout_session.dart';
 import '../providers/app_state_providers.dart';
 
 /// Provider for AuthService singleton
@@ -59,4 +60,20 @@ final userEmailProvider = Provider<String>((ref) {
 final userPhotoUrlProvider = Provider<String?>((ref) {
   final user = ref.watch(currentUserProvider);
   return user?.photoURL;
+});
+
+/// StreamProvider watching Real-Time Completed Workouts from Firestore
+final completedWorkoutsProvider = StreamProvider<List<CompletedWorkout>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+  final profileService = ref.watch(userProfileServiceProvider);
+  return profileService.streamCompletedWorkouts(user.uid);
+});
+
+/// StreamProvider watching Real-Time Body Weight Logs from Firestore
+final bodyWeightLogsProvider = StreamProvider<List<BodyWeightLog>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+  final profileService = ref.watch(userProfileServiceProvider);
+  return profileService.streamBodyWeightLogs(user.uid);
 });
