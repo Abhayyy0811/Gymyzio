@@ -56,7 +56,7 @@ A mobile application UI prototype (Android + iOS) for workout tracking, exercise
 
 1. **Clone or navigate to project directory**:
    ```bash
-   cd Gymysio
+   cd Gymyzio
    ```
 
 2. **Fetch dependencies**:
