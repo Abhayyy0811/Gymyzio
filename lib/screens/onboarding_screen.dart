@@ -156,6 +156,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (!mounted) return;
 
       if (result.isNewUser) {
+        final autoName = user.displayName ?? result.profile.name;
+        if (autoName.isNotEmpty && autoName != 'Athlete') {
+          _nameController.text = autoName;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Welcome, ${user.displayName ?? user.email ?? "Athlete"}! Let\'s set up your profile 🔥'),
@@ -497,7 +501,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // Step 3: Profile Setup Form
   Widget _buildProfileFormPage() {
-    final currentUnit = ref.watch(userProfileProvider).unitSystem;
+    final currentProfile = ref.watch(userProfileProvider);
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final detectedName = currentUser?.displayName ?? (currentProfile.name != 'Athlete' ? currentProfile.name : '');
+    if (_nameController.text.trim().isEmpty && detectedName.isNotEmpty) {
+      _nameController.text = detectedName;
+    }
+
+    final currentUnit = currentProfile.unitSystem;
     final weightUnitLabel = currentUnit == 'Imperial' ? 'lbs' : 'kg';
 
     return Center(
@@ -1656,12 +1667,6 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
         ? ''
         : (rawPhone.startsWith('+') ? rawPhone : '$_selectedCountryCode$rawPhone');
 
-    if (phoneToUse.isEmpty || phoneToUse.length < 7) {
-      setState(() => _phoneError = "Please enter a valid phone number");
-      _phoneShakeKey.currentState?.shake();
-      return;
-    }
-
     final syntaxErr = validateUsernameSyntax(chosenUsername);
     if (syntaxErr != null) {
       setState(() => _usernameError = syntaxErr);
@@ -2091,87 +2096,8 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
           ),
           const SizedBox(height: 24),
 
-          // --- STEP 2: CHOOSE USERNAME & CONNECT PHONE SCREEN FORM ---
+          // --- STEP 2: CHOOSE USERNAME SCREEN FORM ---
           if (_authMode == _AuthMode.chooseUsername) ...[
-
-            ShakeWidget(
-              key: _phoneShakeKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _phoneController,
-                    focusNode: _phoneFocusNode,
-                    textInputAction: TextInputAction.next,
-                    keyboardType: TextInputType.phone,
-                    maxLength: 10,
-                    onSubmitted: (_) => _usernameFocusNode.requestFocus(),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    decoration: InputDecoration(
-                      counterText: '',
-                      labelText: 'Phone Number',
-                      hintText: '9876543210',
-                      filled: true,
-                      fillColor: AppColors.surfaceLight,
-                      prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                      prefixIcon: InkWell(
-                        onTap: () => _openCountryPickerBottomSheet(context),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 12, right: 6),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.phone_iphone_rounded, color: AppColors.primary, size: 20),
-                              const SizedBox(width: 6),
-                              Text(
-                                kCountryCallingCodes.firstWhere((c) => c.code == _selectedCountryCode, orElse: () => kCountryCallingCodes.first).flag,
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _selectedCountryCode,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Icon(Icons.arrow_drop_down_rounded, color: AppColors.primary, size: 22),
-                              Container(
-                                height: 20,
-                                width: 1,
-                                margin: const EdgeInsets.only(left: 4, right: 8),
-                                color: AppColors.border,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _phoneError != null ? Colors.redAccent : AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _phoneError != null ? Colors.redAccent : AppColors.primary, width: 1.8),
-                      ),
-                    ),
-                  ),
-                  if (_phoneError != null) ...[
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: Text(_phoneError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w500)),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
             ShakeWidget(
               key: _usernameShakeKey,
               child: Column(

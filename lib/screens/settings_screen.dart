@@ -240,6 +240,13 @@ class SettingsScreen extends ConsumerWidget {
       return;
     }
 
+    // Always require password verification after clicking Delete Forever
+    if (currentUser != null) {
+      if (!context.mounted) return;
+      final bool reauthenticated = await _showInPlaceReauthDialog(context, currentUser);
+      if (!reauthenticated) return; // Cancelled or incorrect password
+    }
+
     void showLoadingOverlay() {
       showDialog(
         context: context,
@@ -262,7 +269,7 @@ class SettingsScreen extends ConsumerWidget {
 
     showLoadingOverlay();
 
-    Future<void> completeAccountWipe() async {
+    try {
       // 1. Delete Firestore user document & subcollections
       await ref.read(userProfileServiceProvider).deleteUserProfile(uid);
 
@@ -271,7 +278,7 @@ class SettingsScreen extends ConsumerWidget {
         await currentUser.delete();
       }
 
-      // 3. Remove account from local device AccountRegistryService
+      // 3. Remove account from local device AccountRegistryService so it won't appear in Switch Account
       await ref.read(accountRegistryServiceProvider).removeAccount(uid);
 
       // 4. Clean up Riverpod state and sign out
@@ -288,38 +295,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
         );
         context.go('/onboarding');
-      }
-    }
-
-    try {
-      await completeAccountWipe();
-    } on FirebaseAuthException catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // Dismiss loading overlay
-      }
-      if (e.code == 'requires-recent-login' && currentUser != null) {
-        if (!context.mounted) return;
-        final bool reauthenticated = await _showInPlaceReauthDialog(context, currentUser);
-        if (reauthenticated) {
-          if (!context.mounted) return;
-          showLoadingOverlay();
-          try {
-            await completeAccountWipe();
-          } catch (retryErr) {
-            if (context.mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to delete account: ${retryErr.toString()}')),
-              );
-            }
-          }
-        }
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete account: ${e.message}')),
-          );
-        }
       }
     } catch (e) {
       if (context.mounted) {
