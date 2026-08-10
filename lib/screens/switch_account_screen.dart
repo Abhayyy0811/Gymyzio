@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import '../services/account_registry_service.dart';
 import '../widgets/shine_button.dart';
 import '../widgets/password_field.dart';
 import '../widgets/shake_widget.dart';
+import '../widgets/responsive_web_wrapper.dart';
 
 class SwitchAccountScreen extends ConsumerStatefulWidget {
   const SwitchAccountScreen({super.key});
@@ -166,7 +168,20 @@ class _SwitchAccountScreenState extends ConsumerState<SwitchAccountScreen> {
     try {
       await ref.read(authServiceProvider).signOut();
 
-      final googleSignIn = GoogleSignIn();
+      if (kIsWeb) {
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+        final userCred = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        if (userCred.user != null) {
+          await _performPostSwitchStateRefresh(userCred.user!);
+        }
+        return;
+      }
+
+      final googleSignIn = GoogleSignIn(
+        clientId: kIsWeb ? '991712237098-r8goommung4n32qbvqai5lv16g3cmkk9.apps.googleusercontent.com' : null,
+        serverClientId: kIsWeb ? null : '991712237098-r8goommung4n32qbvqai5lv16g3cmkk9.apps.googleusercontent.com',
+      );
       GoogleSignInAccount? googleUser;
 
       try {
@@ -307,9 +322,11 @@ class _SwitchAccountScreenState extends ConsumerState<SwitchAccountScreen> {
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
+            : ResponsiveWebWrapper(
+                maxWidth: 700,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
@@ -538,6 +555,7 @@ class _SwitchAccountScreenState extends ConsumerState<SwitchAccountScreen> {
                     ),
                   ],
                 ),
+              ),
               ),
       ),
     );

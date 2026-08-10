@@ -9,6 +9,7 @@ import '../providers/app_settings_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/rest_timer_widget.dart';
 import '../widgets/shine_button.dart';
+import '../widgets/responsive_web_wrapper.dart';
 import '../models/workout_session.dart';
 import '../utils/unit_converter.dart';
 
@@ -67,7 +68,9 @@ class _WorkoutLoggingScreenState extends ConsumerState<WorkoutLoggingScreen> {
             ),
           ],
         ),
-        body: Column(
+        body: ResponsiveWebWrapper(
+          maxWidth: 950,
+          child: Column(
           children: [
             // First-Time Dismissible "How to use" Instructional Info Banner
             if (_showInstructionHint)
@@ -149,6 +152,7 @@ class _WorkoutLoggingScreenState extends ConsumerState<WorkoutLoggingScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -430,17 +434,24 @@ class _WorkoutLoggingScreenState extends ConsumerState<WorkoutLoggingScreen> {
                 isStrength: isStrength,
               );
 
-              final user = FirebaseAuth.instance.currentUser;
-              if (user != null && workoutList.isNotEmpty) {
+              if (workoutList.isNotEmpty) {
+                final user = FirebaseAuth.instance.currentUser;
                 final completedWorkout = CompletedWorkout(
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  userId: user.uid,
-                  workoutTitle: 'Daily Workout',
+                  userId: user?.uid ?? 'guest',
+                  workoutTitle: 'Daily Workout Session',
                   date: DateTime.now(),
                   durationMinutes: 45,
                   exercises: List.from(workoutList),
                 );
-                ref.read(userProfileServiceProvider).saveCompletedWorkout(user.uid, completedWorkout);
+
+                // Instant local state update for 0ms chart response
+                ref.read(workoutHistoryProvider.notifier).addWorkout(completedWorkout);
+
+                // Sync to Firestore
+                if (user != null) {
+                  ref.read(userProfileServiceProvider).saveCompletedWorkout(user.uid, completedWorkout);
+                }
               }
 
               ref.read(activeWorkoutProvider.notifier).clearWorkout();

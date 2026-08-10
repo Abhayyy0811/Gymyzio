@@ -8,6 +8,7 @@ class ExerciseCard extends StatelessWidget {
   final Exercise exercise;
   final bool isFavorite;
   final Color accentColor;
+  final bool isCompact;
   final VoidCallback? onTap;
   final VoidCallback? onFavoriteToggle;
 
@@ -16,17 +17,112 @@ class ExerciseCard extends StatelessWidget {
     required this.exercise,
     this.isFavorite = false,
     this.accentColor = AppColors.libraryAccent,
+    this.isCompact = false,
     this.onTap,
     this.onFavoriteToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isCompact) {
+      return AppBouncyTap(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceOf(context),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: exercise.themeColor.withValues(alpha: 0.3)),
+            boxShadow: AppColors.softGlow(exercise.themeColor, opacity: 0.08, blur: 6),
+          ),
+          child: Row(
+            children: [
+              // Small Thumbnail GIF
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: ExerciseGifWidget(
+                    assetPath: exercise.assetPath,
+                    gifUrl: exercise.gifUrl,
+                    exerciseId: exercise.id,
+                    exerciseName: exercise.name,
+                    width: 48,
+                    height: 48,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+
+              // Title & Spec Badges
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      exercise.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12.5,
+                        color: AppColors.textPrimaryOf(context),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: exercise.themeColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            exercise.muscleGroup,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: exercise.themeColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          exercise.equipment,
+                          style: TextStyle(fontSize: 10, color: AppColors.textMutedOf(context)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Favorite Action & Arrow
+              if (onFavoriteToggle != null)
+                IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                    color: isFavorite ? accentColor : AppColors.textMutedOf(context),
+                    size: 18,
+                  ),
+                  onPressed: onFavoriteToggle,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.textMutedOf(context)),
+            ],
+          ),
+        ),
+      );
+    }
     return AppBouncyTap(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: exercise.themeColor.withValues(alpha: 0.4)),
           boxShadow: AppColors.softGlow(exercise.themeColor, opacity: 0.15, blur: 12),
@@ -58,28 +154,30 @@ class ExerciseCard extends StatelessWidget {
             // Exercise Info
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       exercise.name,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimaryOf(context)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    Row(
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 2,
                       children: [
                         _buildBadgeChip(exercise.muscleGroup, accentColor),
-                        const SizedBox(width: 6),
                         _buildBadgeChip(exercise.difficulty, AppColors.secondary),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       'Equipment: ${exercise.equipment}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: TextStyle(fontSize: 11.5, color: AppColors.textMutedOf(context)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -92,7 +190,7 @@ class ExerciseCard extends StatelessWidget {
             IconButton(
               icon: Icon(
                 isFavorite ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                color: isFavorite ? accentColor : AppColors.textMuted,
+                color: isFavorite ? accentColor : AppColors.textMutedOf(context),
               ),
               onPressed: onFavoriteToggle,
             ),

@@ -20,6 +20,7 @@ class Exercise {
   final String? target;
   final List<String> secondaryMuscles;
   final String? bodyPart;
+  final String? videoPath;
 
   const Exercise({
     required this.id,
@@ -37,6 +38,7 @@ class Exercise {
     this.target,
     this.secondaryMuscles = const [],
     this.bodyPart,
+    this.videoPath,
   });
 
   factory Exercise.fromMap(Map<String, dynamic> map) {

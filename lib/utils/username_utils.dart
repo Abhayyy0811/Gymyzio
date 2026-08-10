@@ -12,7 +12,6 @@ const Set<String> reservedUsernameBlocklist = {
   'moderator',
   'mod',
   'official',
-  'gymysio',
   'gymyzio',
   'help',
   'superuser',

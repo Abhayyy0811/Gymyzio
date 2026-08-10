@@ -58,43 +58,40 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
         final profileService = ref.read(userProfileServiceProvider);
         final result = await profileService.fetchOrInitUserProfile(currentUser);
 
-        // Check if user has completed registration (has a display username)
-        if (result.profile.usernameDisplay != null && result.profile.usernameDisplay!.isNotEmpty) {
-          // Update Riverpod user profile state
-          ref.read(userProfileProvider.notifier).setProfile(result.profile);
-          ref.read(isNewUserProvider.notifier).state = result.isNewUser;
+        // Update Riverpod user profile state
+        ref.read(userProfileProvider.notifier).setProfile(result.profile);
+        ref.read(isNewUserProvider.notifier).state = result.isNewUser;
 
-          // Keep local device account registry up to date
-          String method = 'email';
-          if (currentUser.providerData.isNotEmpty) {
-            final p = currentUser.providerData.first.providerId;
-            if (p.contains('google')) {
-              method = 'google';
-            } else if (p.contains('phone')) {
-              method = 'phone';
-            }
-          } else if (currentUser.phoneNumber != null && currentUser.phoneNumber!.isNotEmpty) {
+        // Keep local device account registry up to date
+        String method = 'email';
+        if (currentUser.providerData.isNotEmpty) {
+          final p = currentUser.providerData.first.providerId;
+          if (p.contains('google')) {
+            method = 'google';
+          } else if (p.contains('phone')) {
             method = 'phone';
           }
+        } else if (currentUser.phoneNumber != null && currentUser.phoneNumber!.isNotEmpty) {
+          method = 'phone';
+        }
 
-          await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
-            SavedAccount(
-              uid: currentUser.uid,
-              displayName: currentUser.displayName ?? result.profile.name,
-              identifier: currentUser.email ?? currentUser.phoneNumber ?? result.profile.email ?? 'Athlete',
-              photoUrl: currentUser.photoURL,
-              signInMethod: method,
-              lastUsedAt: DateTime.now(),
-            ),
-          );
+        await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
+          SavedAccount(
+            uid: currentUser.uid,
+            displayName: currentUser.displayName ?? result.profile.name,
+            identifier: currentUser.email ?? currentUser.phoneNumber ?? result.profile.email ?? 'Athlete',
+            photoUrl: currentUser.photoURL,
+            signInMethod: method,
+            lastUsedAt: DateTime.now(),
+          ),
+        );
 
-          if (!mounted) return;
+        if (!mounted) return;
+
+        // Check if user has completed profile setup or has valid data
+        if (result.profile.isProfileComplete || (result.profile.name.isNotEmpty && result.profile.name != 'Athlete')) {
           context.go('/home');
         } else {
-          // User closed app halfway through login/signup (no username created).
-          // Sign out so they start fresh on the Account Selection / Sign In screen!
-          await ref.read(authServiceProvider).signOut();
-          if (!mounted) return;
           context.go('/onboarding');
         }
       } else {
@@ -153,24 +150,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Glowing Icon Badge
+                          // Icon Badge
                           Container(
-                            padding: const EdgeInsets.all(24),
+                            width: 100,
+                            height: 100,
                             decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: AppColors.primaryGradient,
+                              borderRadius: BorderRadius.circular(22),
+                              color: Colors.white,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.25),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 6),
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.fitness_center_rounded,
-                              size: 56,
-                              color: Colors.white,
+                            clipBehavior: Clip.antiAlias,
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Image.asset(
+                                'assets/icon/app_icon_avatar.png',
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 28),

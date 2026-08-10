@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../services/account_registry_service.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state_providers.dart';
@@ -15,6 +19,7 @@ import '../utils/phone_utils.dart';
 import '../utils/username_utils.dart';
 import '../utils/unit_converter.dart';
 import '../utils/body_metrics_calculator.dart';
+import '../widgets/responsive_web_wrapper.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -31,20 +36,228 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _showPhotoPickerOptions(BuildContext context, WidgetRef ref) {
+    final isDark = AppColors.isDarkMode(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  'Change Profile Photo',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimaryOf(ctx),
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose how you\'d like to update your photo',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondaryOf(ctx)),
+                ),
+                const SizedBox(height: 20),
+                _buildPhotoOption(
+                  ctx,
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Take Photo',
+                  sublabel: 'Use your camera',
+                  color: const Color(0xFF2563EB),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickAndSavePhoto(context, ref, ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildPhotoOption(
+                  ctx,
+                  icon: Icons.photo_library_rounded,
+                  label: 'Upload from Gallery',
+                  sublabel: 'Choose from camera roll',
+                  color: const Color(0xFF0D9488),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickAndSavePhoto(context, ref, ImageSource.gallery);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildPhotoOption(
+                  ctx,
+                  icon: Icons.folder_open_rounded,
+                  label: 'Browse Files',
+                  sublabel: 'Pick from your device storage',
+                  color: const Color(0xFF7C3AED),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickAndSavePhoto(context, ref, ImageSource.gallery);
+                  },
+                ),
+                const SizedBox(height: 10),
+                // Remove photo option (if photo exists)
+                Consumer(
+                  builder: (c, r, _) {
+                    final hasCustom = r.watch(customPhotoUrlProvider) != null;
+                    if (!hasCustom) return const SizedBox.shrink();
+                    return Column(
+                      children: [
+                        const Divider(height: 20),
+                        _buildPhotoOption(
+                          ctx,
+                          icon: Icons.delete_outline_rounded,
+                          label: 'Remove Photo',
+                          sublabel: 'Reset to default avatar',
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            r.read(customPhotoUrlProvider.notifier).clearPhoto();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPhotoOption(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String sublabel,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimaryOf(context), fontSize: 15)),
+                  Text(sublabel, style: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 12)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMutedOf(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndSavePhoto(BuildContext context, WidgetRef ref, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+      if (file == null) return;
+
+      final bytes = await file.readAsBytes();
+      final base64Str = base64Encode(bytes);
+      final mimeType = file.mimeType ?? 'image/jpeg';
+      final dataUrl = 'data:$mimeType;base64,$base64Str';
+
+      await ref.read(customPhotoUrlProvider.notifier).setPhoto(dataUrl);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Text('Profile photo updated!', style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+            backgroundColor: AppColors.settingsAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    }
+  }
+
   Future<bool> _showInPlaceReauthDialog(BuildContext context, User currentUser) async {
     final isGoogleUser = currentUser.providerData.any((p) => p.providerId == 'google.com');
 
     if (isGoogleUser) {
       try {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) return false;
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        await currentUser.reauthenticateWithCredential(credential);
-        return true;
+        if (kIsWeb) {
+          final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+          await currentUser.reauthenticateWithPopup(googleProvider);
+          return true;
+        } else {
+          final GoogleSignInAccount? googleUser = await GoogleSignIn(
+            clientId: kIsWeb ? '991712237098-r8goommung4n32qbvqai5lv16g3cmkk9.apps.googleusercontent.com' : null,
+            serverClientId: kIsWeb ? null : '991712237098-r8goommung4n32qbvqai5lv16g3cmkk9.apps.googleusercontent.com',
+          ).signIn();
+          if (googleUser == null) return false;
+          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          final AuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          await currentUser.reauthenticateWithCredential(credential);
+          return true;
+        }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -241,11 +454,48 @@ class SettingsScreen extends ConsumerWidget {
       return;
     }
 
-    // Always require password verification after clicking Delete Forever
+    final bool isGoogleUser = currentUser != null &&
+        currentUser.providerData.any((p) => p.providerId == 'google.com');
+
     if (currentUser != null) {
       if (!context.mounted) return;
-      final bool reauthenticated = await _showInPlaceReauthDialog(context, currentUser);
-      if (!reauthenticated) return; // Cancelled or incorrect password
+      if (isGoogleUser) {
+        // For Google Auth users: prompt direct verification dialog
+        final bool confirmGoogleDel = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.g_mobiledata_rounded, color: Colors.redAccent, size: 32),
+                SizedBox(width: 8),
+                Text('Confirm Google Deletion', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
+              ],
+            ),
+            content: const Text(
+              'Are you sure you want to permanently delete your Google-linked Gymyzio account and all database records?',
+              style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Confirm & Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ) ?? false;
+        if (!confirmGoogleDel) return;
+      } else {
+        // For Email/Password users: require password verification
+        final bool reauthenticated = await _showInPlaceReauthDialog(context, currentUser);
+        if (!reauthenticated) return;
+      }
     }
 
     void showLoadingOverlay() {
@@ -260,7 +510,7 @@ class SettingsScreen extends ConsumerWidget {
               CircularProgressIndicator(color: Colors.redAccent),
               SizedBox(width: 20),
               Expanded(
-                child: Text('Deleting account & data...', style: TextStyle(color: Colors.white)),
+                child: Text('Deleting account & database records...', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -271,18 +521,32 @@ class SettingsScreen extends ConsumerWidget {
     showLoadingOverlay();
 
     try {
-      // 1. Delete Firestore user document & subcollections
+      // 1. Delete Firestore user document & subcollections (workouts, weight logs, history)
       await ref.read(userProfileServiceProvider).deleteUserProfile(uid);
 
-      // 2. Delete Firebase Auth User account
-      if (currentUser != null) {
-        await currentUser.delete();
-      }
-
-      // 3. Remove account from local device AccountRegistryService so it won't appear in Switch Account
+      // 2. Remove account from device AccountRegistryService so it won't appear in Switch Account
       await ref.read(accountRegistryServiceProvider).removeAccount(uid);
 
-      // 4. Clean up Riverpod state and sign out
+      // 3. Delete Firebase Auth User account
+      if (currentUser != null) {
+        try {
+          await currentUser.delete();
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'requires-recent-login') {
+            if (isGoogleUser) {
+              await ref.read(authServiceProvider).signInWithGoogle();
+              final freshUser = FirebaseAuth.instance.currentUser;
+              if (freshUser != null) await freshUser.delete();
+            } else {
+              throw Exception("Please sign out and sign in again to verify account deletion.");
+            }
+          } else {
+            rethrow;
+          }
+        }
+      }
+
+      // 4. Reset Riverpod local state and sign out
       ref.read(userProfileProvider.notifier).reset();
       ref.read(userActivityProvider.notifier).reset();
       await ref.read(authServiceProvider).signOut();
@@ -291,7 +555,7 @@ class SettingsScreen extends ConsumerWidget {
         Navigator.pop(context); // Dismiss loading overlay
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account deleted successfully'),
+            content: Text('Account permanently deleted'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -301,11 +565,15 @@ class SettingsScreen extends ConsumerWidget {
       if (context.mounted) {
         Navigator.pop(context); // Dismiss loading overlay
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete account: ${e.toString()}')),
+          SnackBar(content: Text('Account deletion note: ${e.toString()}')),
         );
+        // Force redirect to sign in window even if auth session was invalidated
+        context.go('/onboarding');
       }
     }
   }
+
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -341,16 +609,18 @@ class SettingsScreen extends ConsumerWidget {
     const accentColor = AppColors.settingsAccent;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
+      decoration: BoxDecoration(
+        gradient: AppColors.backgroundGradientOf(context),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(tr('settings_title'), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: -0.3)),
+          title: Text(tr('settings_title'), style: TextStyle(color: AppColors.textPrimaryOf(context), fontWeight: FontWeight.bold, letterSpacing: -0.3)),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+        body: ResponsiveWebWrapper(
+          maxWidth: 900,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -366,6 +636,7 @@ class SettingsScreen extends ConsumerWidget {
                 formatHeight: formatHeight,
                 accentColor: accentColor,
                 onEditTap: () => _showEditProfileModal(context, ref, profile),
+                onPhotoTap: () => _showPhotoPickerOptions(context, ref),
               )
               .animate()
               .fadeIn(duration: 400.ms)
@@ -409,6 +680,79 @@ class SettingsScreen extends ConsumerWidget {
                 tr('app_preferences'),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: -0.3),
               ),
+              const SizedBox(height: 12),
+
+              // Appearance (Light / Dark Mode Toggle Selector)
+              Consumer(
+                builder: (context, ref, child) {
+                  final themeMode = ref.watch(themeModeProvider);
+                  final bool isDark = themeMode == ThemeMode.dark;
+                  final String subtitleText = isDark ? 'Dark Mode Active' : 'Light Mode Active';
+                  final IconData leadingIcon = isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded;
+
+                  Widget buildPill(ThemeMode mode, String label, IconData icon) {
+                    final bool isSelected = themeMode == mode;
+                    return GestureDetector(
+                      onTap: () {
+                        ref.read(themeModeProvider.notifier).setThemeMode(mode);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 14,
+                              color: isSelected ? Colors.white : AppColors.textMutedOf(context),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : AppColors.textMutedOf(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return _buildSettingTile(
+                    icon: leadingIcon,
+                    title: 'Appearance',
+                    subtitle: subtitleText,
+                    accentColor: accentColor,
+                    trailing: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLightOf(context),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.borderOf(context)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          buildPill(ThemeMode.light, 'Light', Icons.light_mode_rounded),
+                          const SizedBox(width: 4),
+                          buildPill(ThemeMode.dark, 'Dark', Icons.dark_mode_rounded),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              )
+              .animate()
+              .fadeIn(duration: 400.ms, delay: 100.ms)
+              .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
               const SizedBox(height: 12),
 
               // Language Switcher Tile
@@ -634,6 +978,7 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -649,125 +994,161 @@ class SettingsScreen extends ConsumerWidget {
     required String Function(double, {bool includeUnit}) formatHeight,
     required Color accentColor,
     required VoidCallback onEditTap,
+    required VoidCallback onPhotoTap,
   }) {
     final phoneStr = profile.phoneNumber != null && profile.phoneNumber!.isNotEmpty
         ? profile.phoneNumber!
         : 'No phone number added';
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.container),
-        border: Border.all(color: accentColor.withValues(alpha: 0.4)),
-        boxShadow: AppColors.softGlow(accentColor, opacity: 0.15, blur: 14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (photoUrl != null && photoUrl.isNotEmpty)
-            CircleAvatar(
-              radius: 30,
-              backgroundImage: NetworkImage(photoUrl),
-              backgroundColor: accentColor,
-            )
-          else
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: accentColor,
-              child: Text(
-                displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+    return Builder(
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceOf(context),
+            borderRadius: BorderRadius.circular(AppRadius.container),
+            border: Border.all(color: accentColor.withValues(alpha: 0.4)),
+            boxShadow: AppColors.softGlow(accentColor, opacity: 0.15, blur: 14),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            // Avatar with pencil edit overlay
+              GestureDetector(
+                onTap: onPhotoTap,
+                child: Stack(
+                  children: [
+                    if (photoUrl != null && photoUrl.isNotEmpty)
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundImage: photoUrl.startsWith('data:')
+                            ? MemoryImage(base64Decode(photoUrl.split(',').last)) as ImageProvider
+                            : NetworkImage(photoUrl),
+                        backgroundColor: accentColor,
+                      )
+                    else
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor: accentColor,
+                        child: Text(
+                          displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A',
+                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentColor.withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.edit_rounded, size: 13, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (profile.usernameDisplay != null && profile.usernameDisplay!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    '@${profile.usernameDisplay}',
-                    style: TextStyle(color: accentColor, fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ],
-                const SizedBox(height: 2),
-                Text(
-                  email,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Row(
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.phone_iphone_rounded, size: 13, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
                     Text(
-                      phoneStr,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
+                      displayName,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimaryOf(context)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (profile.usernameDisplay != null && profile.usernameDisplay!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '@${profile.usernameDisplay}',
+                        style: TextStyle(color: accentColor, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                    const SizedBox(height: 2),
+                    Text(
+                      email,
+                      style: TextStyle(color: AppColors.textMutedOf(context), fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.phone_iphone_rounded, size: 13, color: AppColors.textMutedOf(context)),
+                        const SizedBox(width: 4),
+                        Text(
+                          phoneStr,
+                          style: TextStyle(color: AppColors.textMutedOf(context), fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${profile.ageFormatted} • ${profile.weightFormatted} • ${profile.heightFormatted}',
+                      style: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            'Body Fat: $calculatedBodyFat%',
+                            style: const TextStyle(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            'BMI Score: $calculatedBmi',
+                            style: const TextStyle(color: AppColors.secondary, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${profile.ageFormatted} • ${profile.weightFormatted} • ${profile.heightFormatted}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              IconButton(
+                onPressed: onEditTap,
+                icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.settingsAccent),
+                tooltip: 'Edit Profile',
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.settingsAccent.withValues(alpha: 0.12),
+                  padding: const EdgeInsets.all(8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        'Body Fat: $calculatedBodyFat%',
-                        style: const TextStyle(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        'BMI Score: $calculatedBmi',
-                        style: const TextStyle(color: AppColors.secondary, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: onEditTap,
-            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.settingsAccent),
-            tooltip: 'Edit Profile',
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.settingsAccent.withValues(alpha: 0.12),
-              padding: const EdgeInsets.all(8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -778,37 +1159,41 @@ class SettingsScreen extends ConsumerWidget {
     required Color accentColor,
     required Widget trailing,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: accentColor, size: 22),
+    return Builder(
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceOf(context),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.borderOf(context)),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-              ],
-            ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: accentColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimaryOf(context))),
+                    const SizedBox(height: 2),
+                    Text(subtitle, style: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 12)),
+                  ],
+                ),
+              ),
+              trailing,
+            ],
           ),
-          trailing,
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -867,8 +1252,11 @@ class _EditProfileModalState extends ConsumerState<_EditProfileModal> {
       text: ftIn.inches % 1 == 0 ? ftIn.inches.toInt().toString() : ftIn.inches.toStringAsFixed(1),
     );
 
-    _selectedGoal = widget.profile.goal;
-    _selectedExperience = widget.profile.experienceLevel;
+    const goalOptions = ['Strength', 'Cardio', 'Both', 'Muscle Gain', 'Weight Loss', 'Maintenance', 'Endurance', 'General Fitness'];
+    const expOptions = ['Beginner', 'Intermediate', 'Advanced'];
+
+    _selectedGoal = goalOptions.contains(widget.profile.goal) ? widget.profile.goal : 'Strength';
+    _selectedExperience = expOptions.contains(widget.profile.experienceLevel) ? widget.profile.experienceLevel : 'Intermediate';
   }
 
   @override
@@ -1208,7 +1596,7 @@ class _EditProfileModalState extends ConsumerState<_EditProfileModal> {
                 fillColor: AppColors.surfaceLight,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              items: ['Strength', 'Cardio', 'Both'].map((g) {
+              items: ['Strength', 'Cardio', 'Both', 'Muscle Gain', 'Weight Loss', 'Maintenance', 'Endurance', 'General Fitness'].map((g) {
                 return DropdownMenuItem(value: g, child: Text(g));
               }).toList(),
               onChanged: (val) {
@@ -1410,9 +1798,14 @@ class TitleCaseTextInputFormatter extends TextInputFormatter {
     }
 
     final String formatted = buffer.toString();
-    return newValue.copyWith(
+    int selectionIndex = newValue.selection.end;
+    if (selectionIndex > formatted.length) {
+      selectionIndex = formatted.length;
+    }
+
+    return TextEditingValue(
       text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
+      selection: TextSelection.collapsed(offset: selectionIndex),
     );
   }
 }

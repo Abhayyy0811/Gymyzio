@@ -1,0 +1,175 @@
+{
+  "plans": {
+    "Veg_W1_Fat Loss": {
+      "preference": "Veg",
+      "weight_category": "W1",
+      "goal": "Fat Loss",
+      "description": "High-protein lean vegetarian deficit diet tailored for individuals under 55 kg looking for sustainable fat reduction.",
+      "meals": {
+        "breakfast": {
+          "title": "High Protein Oats & Berries 🍳",
+          "items": [
+            {"name": "45g Rolled Oats in Skimmed Milk", "calories": 170, "protein": 7, "carbs": 30, "fats": 3},
+            {"name": "1 Scoop Vanilla Plant Protein", "calories": 110, "protein": 21, "carbs": 2, "fats": 1.5},
+            {"name": "1 tbsp Chia Seeds & Blueberries", "calories": 50, "protein": 1.5, "carbs": 9, "fats": 2},
+            {"name": "5 Roasted Almonds", "calories": 35, "protein": 1.5, "carbs": 1, "fats": 3}
+          ]
+        },
+        "lunch": {
+          "title": "Grilled Paneer & Quinoa Salad 🥣",
+          "items": [
+            {"name": "100g Low-Fat Cottage Cheese (Paneer)", "calories": 180, "protein": 18, "carbs": 4, "fats": 10},
+            {"name": "1/2 Cup Cooked Quinoa", "calories": 110, "protein": 4, "carbs": 20, "fats": 2},
+            {"name": "Fresh Cucumber, Tomato & Bell Peppers", "calories": 40, "protein": 1.5, "carbs": 8, "fats": 0.5},
+            {"name": "1 tsp Olive Oil Lemon Dressing", "calories": 45, "protein": 0, "carbs": 1, "fats": 5}
+          ]
+        },
+        "snack": {
+          "title": "Roasted Chana & Green Tea ☕",
+          "items": [
+            {"name": "40g Roasted Black Gram (Chana)", "calories": 140, "protein": 8, "carbs": 22, "fats": 2},
+            {"name": "1 Cup Green Tea with Lemon", "calories": 5, "protein": 0, "carbs": 1, "fats": 0},
+            {"name": "4 Walnuts Halves", "calories": 52, "protein": 1.2, "carbs": 1, "fats": 5}
+          ]
+        },
+        "dinner": {
+          "title": "Moong Dal Sprouts & Multigrain Roti 🥗",
+          "items": [
+            {"name": "1 Bowl Steamed Moong Dal Sprouts", "calories": 160, "protein": 12, "carbs": 26, "fats": 1},
+            {"name": "1 Small Multigrain Roti", "calories": 90, "protein": 3, "carbs": 18, "fats": 1.5},
+            {"name": "1 Bowl Mixed Vegetable Clear Soup", "calories": 50, "protein": 2, "carbs": 9, "fats": 0.5},
+            {"name": "Fresh Salad & Lemon Juice", "calories": 25, "protein": 1, "carbs": 5, "fats": 0}
+          ]
+        }
+      }
+    },
+    "Veg_W2_Fat Loss": {
+      "preference": "Veg",
+      "weight_category": "W2",
+      "goal": "Fat Loss",
+      "description": "Balanced vegetarian calorie-restricted plan for optimal fat burn while retaining lean muscle mass.",
+      "meals": {
+        "breakfast": {
+          "title": "Paneer Bhurji & Toast 🍳",
+          "items": [
+            {"name": "120g Low-Fat Paneer Bhurji", "calories": 220, "protein": 20, "carbs": 6, "fats": 13},
+            {"name": "2 Whole Wheat Toast Slices", "calories": 160, "protein": 6, "carbs": 30, "fats": 2},
+            {"name": "1 Cup Black Coffee / Herbal Tea", "calories": 5, "protein": 0, "carbs": 1, "fats": 0},
+            {"name": "5 Roasted Almonds", "calories": 35, "protein": 1.5, "carbs": 1, "fats": 3}
+          ]
+        },
+        "lunch": {
+          "title": "Soya Chunk Curry & Brown Rice 🥣",
+          "items": [
+            {"name": "50g Soya Chunks Curry", "calories": 170, "protein": 26, "carbs": 14, "fats": 1},
+            {"name": "3/4 Cup Steamed Brown Rice", "calories": 160, "protein": 3.5, "carbs": 34, "fats": 1.5},
+            {"name": "1 Bowl Mint Curd Raita", "calories": 80, "protein": 4, "carbs": 6, "fats": 4.5},
+            {"name": "Mixed Green Salad", "calories": 30, "protein": 1, "carbs": 6, "fats": 0}
+          ]
+        },
+        "snack": {
+          "title": "Greek Yogurt & Pumpkin Seeds ☕",
+          "items": [
+            {"name": "150g Unsweetened Greek Yogurt", "calories": 130, "protein": 15, "carbs": 6, "fats": 4},
+            {"name": "1 tbsp Roasted Pumpkin Seeds", "calories": 55, "protein": 3, "carbs": 1.5, "fats": 4.5},
+            {"name": "1/2 Sliced Apple with Cinnamon", "calories": 48, "protein": 0.3, "carbs": 12, "fats": 0.2}
+          ]
+        },
+        "dinner": {
+          "title": "Yellow Dal & Sauteed Tofu Salad 🥗",
+          "items": [
+            {"name": "1 Bowl Arhar Dal Tadka", "calories": 180, "protein": 10, "carbs": 28, "fats": 3.5},
+            {"name": "100g Sauteed Tofu with Broccoli", "calories": 140, "protein": 14, "carbs": 6, "fats": 7},
+            {"name": "1 Multigrain Phulka Roti", "calories": 100, "protein": 3.5, "carbs": 20, "fats": 1.5},
+            {"name": "Fresh Cucumber & Salad", "calories": 25, "protein": 1, "carbs": 5, "fats": 0}
+          ]
+        }
+      }
+    },
+    "Non-Veg_W2_Fat Loss": {
+      "preference": "Non-Veg",
+      "weight_category": "W2",
+      "goal": "Fat Loss",
+      "description": "High-protein non-vegetarian lean meal plan focused on egg whites, chicken breast & clean complex carbs.",
+      "meals": {
+        "breakfast": {
+          "title": "Egg White Omelette & Toast 🍳",
+          "items": [
+            {"name": "4 Egg Whites + 1 Whole Egg Scramble", "calories": 150, "protein": 22, "carbs": 2, "fats": 5},
+            {"name": "2 Slices Whole Wheat Toast", "calories": 160, "protein": 6, "carbs": 30, "fats": 2},
+            {"name": "1 Cup Black Coffee", "calories": 5, "protein": 0, "carbs": 1, "fats": 0},
+            {"name": "5 Roasted Almonds", "calories": 35, "protein": 1.5, "carbs": 1, "fats": 3}
+          ]
+        },
+        "lunch": {
+          "title": "Grilled Chicken Breast & Brown Rice 🥣",
+          "items": [
+            {"name": "150g Herb Grilled Chicken Breast", "calories": 240, "protein": 42, "carbs": 0, "fats": 5},
+            {"name": "3/4 Cup Steamed Brown Rice", "calories": 160, "protein": 3.5, "carbs": 34, "fats": 1.5},
+            {"name": "1 Bowl Steamed Broccoli & Zucchini", "calories": 45, "protein": 3, "carbs": 8, "fats": 0.5}
+          ]
+        },
+        "snack": {
+          "title": "Boiled Eggs & Green Tea ☕",
+          "items": [
+            {"name": "3 Hard Boiled Egg Whites", "calories": 51, "protein": 11, "carbs": 1, "fats": 0},
+            {"name": "1 Whole Boiled Egg", "calories": 78, "protein": 6, "carbs": 0.6, "fats": 5},
+            {"name": "1 Cup Green Tea", "calories": 5, "protein": 0, "carbs": 1, "fats": 0},
+            {"name": "5 Almonds", "calories": 35, "protein": 1.5, "carbs": 1, "fats": 3}
+          ]
+        },
+        "dinner": {
+          "title": "Baked Fish Curry & Phulka 🥗",
+          "items": [
+            {"name": "150g White Fish Fillet in Curry", "calories": 210, "protein": 32, "carbs": 4, "fats": 7},
+            {"name": "1 Multigrain Phulka Roti", "calories": 100, "protein": 3.5, "carbs": 20, "fats": 1.5},
+            {"name": "Steamed Veggies & Green Salad", "calories": 40, "protein": 2, "carbs": 8, "fats": 0.5}
+          ]
+        }
+      }
+    },
+    "Non-Veg_W3_Fat Loss": {
+      "preference": "Non-Veg",
+      "weight_category": "W3",
+      "goal": "Fat Loss",
+      "description": "Customized Non-Veg Fat Loss meal strategy for W3 category (70-85 kg).",
+      "meals": {
+        "breakfast": {
+          "title": "Egg White Omelette & Toast 🍳",
+          "items": [
+            {"name": "3 Egg Whites + 1 Whole Egg Scramble", "calories": 256, "protein": 22, "carbs": 4, "fats": 6},
+            {"name": "2 Slices Whole Grain Toast", "calories": 146, "protein": 8, "carbs": 30, "fats": 2},
+            {"name": "1 Cup Black Coffee or Herbal Tea", "calories": 5, "protein": 0, "carbs": 1, "fats": 0},
+            {"name": "5 Roasted Almonds", "calories": 35, "protein": 1.5, "carbs": 1, "fats": 3}
+          ]
+        },
+        "lunch": {
+          "title": "Grilled Chicken Breast & Brown Rice 🥣",
+          "items": [
+            {"name": "150g Grilled Chicken Breast", "calories": 366, "protein": 42, "carbs": 2, "fats": 5},
+            {"name": "1 Cup Steamed Brown Rice or Quinoa", "calories": 183, "protein": 4, "carbs": 36, "fats": 2},
+            {"name": "1 Bowl Yellow Lentils (Dal)", "calories": 73, "protein": 5, "carbs": 12, "fats": 1.5},
+            {"name": "Mixed Green Salad with Lemon Dressing", "calories": 30, "protein": 1, "carbs": 5, "fats": 0.5}
+          ]
+        },
+        "snack": {
+          "title": "Boiled Egg Whites & Green Tea ☕",
+          "items": [
+            {"name": "3 Hard Boiled Egg Whites", "calories": 146, "protein": 18, "carbs": 2, "fats": 1},
+            {"name": "1 Cup Green Tea with Lemon", "calories": 5, "protein": 0, "carbs": 1, "fats": 0},
+            {"name": "10 Mixed Roasted Nuts", "calories": 123, "protein": 4, "carbs": 4, "fats": 10}
+          ]
+        },
+        "dinner": {
+          "title": "Baked Fish / Chicken Salad & Phulka 🥗",
+          "items": [
+            {"name": "150g Baked Fish or Chicken Breast", "calories": 260, "protein": 36, "carbs": 4, "fats": 6},
+            {"name": "1-2 Multigrain Rotis", "calories": 150, "protein": 5, "carbs": 30, "fats": 2},
+            {"name": "1 Bowl Clear Vegetable Soup", "calories": 45, "protein": 2, "carbs": 8, "fats": 0.5},
+            {"name": "Cucumber & Carrot Salad", "calories": 25, "protein": 1, "carbs": 5, "fats": 0}
+          ]
+        }
+      }
+    }
+  }
+}

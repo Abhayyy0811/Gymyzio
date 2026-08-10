@@ -8,6 +8,10 @@ import '../providers/app_settings_provider.dart';
 import '../models/exercise.dart';
 import '../data/dummy_data.dart';
 
+import '../widgets/responsive_web_wrapper.dart';
+
+import '../widgets/app_notification_bell.dart';
+
 class HomeDashboardScreen extends ConsumerWidget {
   const HomeDashboardScreen({super.key});
 
@@ -18,101 +22,90 @@ class HomeDashboardScreen extends ConsumerWidget {
     final formatWeight = ref.watch(weightFormatterProvider);
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
+      decoration: BoxDecoration(
+        gradient: AppColors.backgroundGradientOf(context),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: CustomScrollView(
+        body: ResponsiveWebWrapper(
+          maxWidth: 1050,
+          child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // Parallax Header SliverAppBar with Layered Pattern
-            SliverAppBar(
-              expandedHeight: 220.0,
-              floating: false,
-              pinned: true,
-              backgroundColor: Colors.transparent,
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-                title: Text(
-                  '${tr('welcome')}, ${profile.name}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [Shadow(color: Colors.black87, blurRadius: 12)],
-                  ),
-                ),
-                background: Stack(
-                  fit: StackFit.expand,
+            // Clean Centered Top Header Banner with Top-Right Notification Bell
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 8),
+                child: Stack(
                   children: [
-                    // Layer 1: Base Gradient
-                    // Layer 1: Base Royal Blue Gradient
                     Container(
-                      decoration: const BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                      ),
-                    ),
-                    // Vignette Gradient Mask
-                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            AppColors.background.withValues(alpha: 0.7),
-                            AppColors.background,
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
+                        color: AppColors.surfaceOf(context),
+                        borderRadius: BorderRadius.circular(AppRadius.container),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        boxShadow: AppColors.softGlow(AppColors.primary, opacity: 0.08, blur: 16),
                       ),
-                    ),
-
-                    // Layer 3: Watermark Dumbbell Icon Accent Graphic
-                    Positioned(
-                      right: -20,
-                      top: -10,
-                      child: Opacity(
-                        opacity: 0.12,
-                        child: Icon(
-                          Icons.fitness_center_rounded,
-                          size: 200,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-
-                    // Layer 5: Goal Badge Overlay
-                    Positioned(
-                      left: 20,
-                      top: 60,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.secondary.withValues(alpha: 0.4)),
-                          boxShadow: AppColors.softGlow(AppColors.secondary, opacity: 0.25, blur: 10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.bolt, color: AppColors.secondary, size: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${tr('goal')}: ${profile.goal} (${profile.experienceLevel})',
-                              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Centered Greeting Badge / Avatar
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
                             ),
-                          ],
-                        ),
+                            child: const Icon(
+                              Icons.fitness_center_rounded,
+                              color: AppColors.primary,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Centered Welcome Title with User Name
+                          Text(
+                            '${tr('welcome')}, ${profile.name.isNotEmpty ? profile.name : 'Athlete'} 👋',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimaryOf(context),
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Centered Motivational Tagline
+                          Text(
+                            'Ready to crush today\'s workout & level up your fitness? 💪',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              color: AppColors.textSecondaryOf(context),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    const Positioned(
+                      top: 14,
+                      right: 14,
+                      child: AppNotificationBell(),
                     ),
                   ],
-                ),
+                )
+                .animate()
+                .fadeIn(duration: 400.ms)
+                .slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
               ),
             ),
 
-            // Dashboard Content List with Entrance Micro-Animations
+            // Dashboard Content List
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -165,6 +158,7 @@ class HomeDashboardScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -244,7 +238,7 @@ class HomeDashboardScreen extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: AppColors.homeAccent.withValues(alpha: 0.3)),
               boxShadow: AppColors.softGlow(AppColors.homeAccent, opacity: 0.12, blur: 10),
@@ -292,7 +286,7 @@ class HomeDashboardScreen extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
               boxShadow: AppColors.softGlow(AppColors.secondary, opacity: 0.12, blur: 10),
@@ -331,7 +325,7 @@ class HomeDashboardScreen extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
               boxShadow: AppColors.softGlow(AppColors.accent, opacity: 0.1, blur: 10),
@@ -389,7 +383,7 @@ class HomeDashboardScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: goldColor.withValues(alpha: 0.4)),
           boxShadow: AppColors.softGlow(goldColor, opacity: 0.15, blur: 14),
@@ -421,7 +415,7 @@ class HomeDashboardScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: AppColors.surfaceLightOf(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -440,7 +434,7 @@ class HomeDashboardScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.secondary.withValues(alpha: 0.15), AppColors.surface],
+          colors: [AppColors.secondary.withValues(alpha: 0.15), AppColors.surfaceOf(context)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

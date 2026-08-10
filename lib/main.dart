@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
+import 'providers/app_settings_provider.dart';
 import 'router/app_router.dart';
 
 void main() async {
@@ -17,24 +19,38 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Pre-load theme before runApp so there's no flash on startup
+  // Default is ALWAYS light unless user explicitly saved 'dark'.
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('app_theme_mode');
+  final ThemeMode initialThemeMode = savedTheme == 'dark'
+      ? ThemeMode.dark
+      : ThemeMode.light; // light by default; persists user choice
+  AppColors.currentThemeMode = initialThemeMode;
+
   runApp(
-    const ProviderScope(
-      child: GymyzioApp(),
+    ProviderScope(
+      overrides: [
+        themeModeProvider.overrideWith((ref) => ThemeModeNotifier(initialThemeMode)),
+      ],
+      child: const GymyzioApp(),
     ),
   );
 }
 
-class GymyzioApp extends StatelessWidget {
+class GymyzioApp extends ConsumerWidget {
   const GymyzioApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: 'Gymyzio',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.lightTheme,
-      themeMode: ThemeMode.light,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: appRouter,
     );
   }

@@ -9,6 +9,12 @@ import '../models/exercise.dart';
 import '../widgets/exercise_card.dart';
 import '../widgets/exercise_skeleton_widget.dart';
 
+import '../widgets/responsive_web_wrapper.dart';
+
+import '../widgets/app_notification_bell.dart';
+
+final isCompactListViewProvider = StateProvider<bool>((ref) => false);
+
 class ExerciseLibraryScreen extends ConsumerWidget {
   const ExerciseLibraryScreen({super.key});
 
@@ -41,17 +47,25 @@ class ExerciseLibraryScreen extends ConsumerWidget {
     const accentColor = AppColors.libraryAccent;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
+      decoration: BoxDecoration(
+        gradient: AppColors.backgroundGradientOf(context),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(tr('exercise_library'), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: -0.3)),
+          title: Text(tr('exercise_library'), style: TextStyle(color: AppColors.textPrimaryOf(context), fontWeight: FontWeight.bold, letterSpacing: -0.3)),
           elevation: 0,
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 16.0),
+              child: AppNotificationBell(),
+            ),
+          ],
         ),
-        body: Column(
-          children: [
+        body: ResponsiveWebWrapper(
+          maxWidth: 1050,
+          child: Column(
+            children: [
             // Search Bar & Filter Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -82,79 +96,35 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Category Filter Chips (All, Strength, Cardio)
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: ['All', 'Strength', 'Cardio'].map((cat) {
-                        int count = allExercises.length;
-                        if (cat == 'Strength') count = strengthCount;
-                        if (cat == 'Cardio') count = cardioCount;
-                        final isSelected = selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: ChoiceChip(
-                            label: Text('$cat ($count)'),
-                            selected: isSelected,
-                            selectedColor: accentColor,
-                            backgroundColor: AppColors.surfaceLight,
-                            labelStyle: TextStyle(
-                              color: isSelected ? Colors.black : AppColors.textSecondary,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                            onSelected: (bool selected) {
-                              if (selected) {
-                                ref.read(selectedCategoryFilterProvider.notifier).state = cat;
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Primary Muscle Group Filter Chips Row
+                  // Category Filter Chips (All, Strength, Cardio) + Grid Toggle & Filter Buttons
                   Row(
                     children: [
                       Expanded(
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: ['All', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Cardio'].map((m) {
-                              int count = 0;
-                              if (m == 'All') {
-                                count = allExercises.length;
-                              } else {
-                                final mLower = m.toLowerCase();
-                                count = allExercises.where((ex) {
-                                  return ex.muscleGroup.toLowerCase().contains(mLower) ||
-                                      (ex.bodyPart != null && ex.bodyPart!.toLowerCase().contains(mLower));
-                                }).length;
-                              }
-                              final isSelected = selectedMuscle == m;
+                            children: ['All', 'Strength', 'Cardio'].map((cat) {
+                              int count = allExercises.length;
+                              if (cat == 'Strength') count = strengthCount;
+                              if (cat == 'Cardio') count = cardioCount;
+                              final isSelected = selectedCategory == cat;
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: ChoiceChip(
-                                  avatar: isSelected
-                                      ? const Icon(Icons.fitness_center_rounded, size: 16, color: Colors.black)
-                                      : null,
-                                  label: Text('$m ($count)'),
+                                  label: Text('$cat ($count)'),
                                   selected: isSelected,
                                   selectedColor: accentColor,
-                                  backgroundColor: AppColors.surfaceLight,
+                                  backgroundColor: AppColors.surfaceLightOf(context),
                                   side: BorderSide(
-                                    color: isSelected ? accentColor : AppColors.border,
+                                    color: isSelected ? accentColor : AppColors.borderOf(context),
                                   ),
                                   labelStyle: TextStyle(
-                                    color: isSelected ? Colors.black : AppColors.textSecondary,
+                                    color: isSelected ? Colors.black : AppColors.textSecondaryOf(context),
                                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                    fontSize: 13,
                                   ),
                                   onSelected: (bool selected) {
                                     if (selected) {
-                                      ref.read(selectedMuscleFilterProvider.notifier).state = m;
-                                      ref.read(selectedEquipmentFilterProvider.notifier).state = 'All';
+                                      ref.read(selectedCategoryFilterProvider.notifier).state = cat;
                                     }
                                   },
                                 ),
@@ -163,17 +133,57 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 8),
+
+                      // Compact / Grid View Toggle Button
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final isCompact = ref.watch(isCompactListViewProvider);
+                          return AppBouncyTap(
+                            onTap: () {
+                              ref.read(isCompactListViewProvider.notifier).state = !isCompact;
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceLightOf(context),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: AppColors.borderOf(context)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isCompact ? Icons.view_headline_rounded : Icons.grid_view_rounded,
+                                    size: 18,
+                                    color: accentColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isCompact ? 'List' : 'Grid',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimaryOf(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                       const SizedBox(width: 6),
 
-                      // More Muscle Filters Bottom Sheet Trigger
+                      // Filter Bottom Sheet Button
                       AppBouncyTap(
                         onTap: () => _showMuscleGroupBottomSheet(context, ref, allExercises, selectedMuscle),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
+                            color: AppColors.surfaceLightOf(context),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border),
+                            border: Border.all(color: AppColors.borderOf(context)),
                           ),
                           child: const Icon(
                             Icons.tune_rounded,
@@ -199,9 +209,9 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                               label: Text(eq == 'All' ? 'All Equipment' : eq),
                               selected: isSelected,
                               selectedColor: accentColor.withValues(alpha: 0.3),
-                              backgroundColor: AppColors.surfaceLight,
+                              backgroundColor: AppColors.surfaceLightOf(context),
                               side: BorderSide(
-                                color: isSelected ? accentColor : AppColors.border,
+                                color: isSelected ? accentColor : AppColors.borderOf(context),
                               ),
                               labelStyle: TextStyle(
                                 color: isSelected ? accentColor : AppColors.textSecondary,
@@ -289,6 +299,7 @@ class ExerciseLibraryScreen extends ConsumerWidget {
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -329,7 +340,7 @@ class ExerciseLibraryScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -356,7 +367,7 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: AppColors.border,
+                        color: AppColors.borderOf(context),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -365,9 +376,9 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Select Muscle Group', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text('Select Muscle Group', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimaryOf(context))),
                           IconButton(
-                            icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                            icon: Icon(Icons.close_rounded, color: AppColors.textMutedOf(context)),
                             onPressed: () => Navigator.of(modalCtx).pop(),
                           ),
                         ],
@@ -378,13 +389,14 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: TextField(
-                        style: const TextStyle(fontSize: 14),
+                        style: TextStyle(fontSize: 14, color: AppColors.textPrimaryOf(context)),
                         decoration: InputDecoration(
                           hintText: 'Filter muscle groups...',
+                          hintStyle: TextStyle(color: AppColors.textMutedOf(context)),
                           prefixIcon: const Icon(Icons.search_rounded, color: accentColor, size: 20),
                           contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                           filled: true,
-                          fillColor: AppColors.surfaceLight,
+                          fillColor: AppColors.surfaceLightOf(context),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -417,7 +429,7 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                                 m,
                                 style: TextStyle(
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                  color: isSelected ? accentColor : AppColors.textPrimary,
+                                  color: isSelected ? accentColor : AppColors.textPrimaryOf(context),
                                 ),
                               ),
                               trailing: Row(
@@ -486,7 +498,7 @@ class PaginatedExerciseListView extends StatefulWidget {
 
 class _PaginatedExerciseListViewState extends State<PaginatedExerciseListView> {
   final ScrollController _scrollController = ScrollController();
-  int _displayedCount = 20;
+  int _displayedCount = 40;
 
   @override
   void initState() {
@@ -499,7 +511,7 @@ class _PaginatedExerciseListViewState extends State<PaginatedExerciseListView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exercises.length != widget.exercises.length) {
       setState(() {
-        _displayedCount = 20.clamp(0, widget.exercises.length);
+        _displayedCount = 40.clamp(0, widget.exercises.length);
       });
     }
   }
@@ -515,7 +527,7 @@ class _PaginatedExerciseListViewState extends State<PaginatedExerciseListView> {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
       if (_displayedCount < widget.exercises.length) {
         setState(() {
-          _displayedCount = (_displayedCount + 20).clamp(0, widget.exercises.length);
+          _displayedCount = (_displayedCount + 30).clamp(0, widget.exercises.length);
         });
       }
     }
@@ -527,67 +539,72 @@ class _PaginatedExerciseListViewState extends State<PaginatedExerciseListView> {
     final renderCount = _displayedCount.clamp(0, totalCount);
     final hasMore = renderCount < totalCount;
 
-    return RefreshIndicator(
-      color: widget.accentColor,
-      backgroundColor: AppColors.surface,
-      onRefresh: widget.onRefresh,
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: hasMore ? renderCount + 1 : renderCount,
-        itemBuilder: (context, index) {
-          if (index == renderCount && hasMore) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20.0),
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.libraryAccent,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Loading more exercises...',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                    ),
-                  ],
+    return Consumer(
+      builder: (context, ref, child) {
+        final isCompact = ref.watch(isCompactListViewProvider);
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            int crossAxisCount = 1;
+            if (isCompact) {
+              crossAxisCount = width >= 900 ? 3 : (width >= 550 ? 2 : 1);
+            } else {
+              crossAxisCount = width >= 900 ? 3 : (width >= 550 ? 2 : 1);
+            }
+
+            return RefreshIndicator(
+              color: widget.accentColor,
+              backgroundColor: AppColors.surface,
+              onRefresh: widget.onRefresh,
+              child: GridView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisExtent: isCompact ? 68 : (crossAxisCount == 1 ? 100 : 110),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
                 ),
+                itemCount: hasMore ? renderCount + 1 : renderCount,
+                itemBuilder: (context, index) {
+                  if (index == renderCount && hasMore) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.libraryAccent,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final exercise = widget.exercises[index];
+                  final isFav = widget.favorites.contains(exercise.id);
+
+                  return ExerciseCard(
+                    exercise: exercise,
+                    isFavorite: isFav,
+                    accentColor: widget.accentColor,
+                    isCompact: isCompact,
+                    onTap: () {
+                      context.push('/exercise-detail/${exercise.id}');
+                    },
+                    onFavoriteToggle: () {
+                      ref.read(favoriteExercisesProvider.notifier).toggleFavorite(exercise.id);
+                    },
+                  ).animate().fadeIn(duration: 300.ms, delay: (15 * (index % 8)).ms);
+                },
               ),
             );
-          }
-
-          final exercise = widget.exercises[index];
-          final isFav = widget.favorites.contains(exercise.id);
-
-          return Consumer(
-            builder: (context, ref, child) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14.0),
-                child: ExerciseCard(
-                  exercise: exercise,
-                  isFavorite: isFav,
-                  accentColor: widget.accentColor,
-                  onTap: () {
-                    context.push('/exercise-detail/${exercise.id}');
-                  },
-                  onFavoriteToggle: () {
-                    ref.read(favoriteExercisesProvider.notifier).toggleFavorite(exercise.id);
-                  },
-                ),
-              )
-              .animate()
-              .fadeIn(duration: 350.ms, delay: (30 * (index % 6)).ms)
-              .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic);
-            },
-          );
-        },
-      ),
+          },
+        );
+      },
     );
   }
 }

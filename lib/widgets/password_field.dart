@@ -52,11 +52,14 @@ class _PasswordFieldState extends State<PasswordField> {
           onEditingComplete: widget.onEditingComplete,
           obscureText: _obscureText,
           onChanged: widget.onChanged,
+          style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             labelText: widget.labelText,
+            labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
             hintText: widget.hintText,
+            hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
             filled: true,
-            fillColor: AppColors.surfaceLight,
+            fillColor: AppColors.surfaceLightOf(context),
             prefixIcon: Icon(
               widget.prefixIcon,
               color: isError ? Colors.redAccent : AppColors.secondary,
@@ -64,7 +67,7 @@ class _PasswordFieldState extends State<PasswordField> {
             suffixIcon: IconButton(
               icon: Icon(
                 _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: isError ? Colors.redAccent : AppColors.textMuted,
+                color: isError ? Colors.redAccent : AppColors.textMutedOf(context),
               ),
               onPressed: () {
                 setState(() {
@@ -75,7 +78,7 @@ class _PasswordFieldState extends State<PasswordField> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: isError ? Colors.redAccent : AppColors.border,
+                color: isError ? Colors.redAccent : AppColors.borderOf(context),
                 width: isError ? 1.5 : 1.0,
               ),
             ),

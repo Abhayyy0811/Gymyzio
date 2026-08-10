@@ -6,6 +6,7 @@ class AppStrings {
       'nav_library': 'Library',
       'nav_progress': 'Progress',
       'nav_badges': 'Badges',
+      'nav_dietchamp': 'DietChamp',
       'nav_settings': 'Settings',
 
       // Home Dashboard
@@ -76,6 +77,7 @@ class AppStrings {
       'nav_library': 'लाइब्रेरी',
       'nav_progress': 'प्रगति',
       'nav_badges': 'बैज',
+      'nav_dietchamp': 'डाइटचैम्प',
       'nav_settings': 'सेटिंग्स',
 
       // Home Dashboard

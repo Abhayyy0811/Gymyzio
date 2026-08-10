@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum BadgeTier { low, moderate, high }
+enum BadgeTier { low, moderate, high, legendary }
 
 class BadgeItem {
   final String id;
@@ -31,6 +31,8 @@ class BadgeItem {
         return 'Moderate';
       case BadgeTier.high:
         return 'High';
+      case BadgeTier.legendary:
+        return 'Legendary';
     }
   }
 
@@ -42,6 +44,8 @@ class BadgeItem {
         return const Color(0xFFFF9100); // Orange
       case BadgeTier.high:
         return const Color(0xFFFF1744); // Red
+      case BadgeTier.legendary:
+        return const Color(0xFFFFD700); // Gold
     }
   }
 }

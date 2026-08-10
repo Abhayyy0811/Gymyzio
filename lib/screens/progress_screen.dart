@@ -7,9 +7,14 @@ import '../theme/app_theme.dart';
 import '../providers/app_state_providers.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/exercise.dart';
 import '../models/workout_session.dart';
 import '../utils/unit_converter.dart';
 import '../utils/body_metrics_calculator.dart';
+
+import '../widgets/responsive_web_wrapper.dart';
+
+import '../widgets/app_notification_bell.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -22,10 +27,10 @@ class ProgressScreen extends ConsumerWidget {
     final unitSystem = ref.watch(appUnitSystemProvider);
     final profile = ref.watch(userProfileProvider);
 
-    final completedWorkoutsAsync = ref.watch(completedWorkoutsProvider);
+    final exercisesAsync = ref.watch(exerciseListProvider);
+    final allLibraryExercises = exercisesAsync.value ?? [];
+    final allWorkouts = ref.watch(allWorkoutsProvider);
     final bodyWeightLogsAsync = ref.watch(bodyWeightLogsProvider);
-
-    final completedWorkouts = completedWorkoutsAsync.value ?? [];
     final bodyWeightLogs = bodyWeightLogsAsync.value ?? [];
     final userActivity = ref.watch(userActivityProvider);
 
@@ -56,24 +61,28 @@ class ProgressScreen extends ConsumerWidget {
             : 15.4);
     final bodyFatCategory = BodyMetricsCalculator.getBodyFatCategory(calculatedBodyFat, isMale: true);
 
-    // Extract real exercise names from completed user workouts
-    final Set<String> loggedExerciseNames = {};
-    for (final w in completedWorkouts) {
+    // Combine all exercises from Exercise Library + user logged completed workouts
+    final Set<String> exerciseNameSet = {};
+    for (final ex in allLibraryExercises) {
+      if (ex.name.trim().isNotEmpty) exerciseNameSet.add(ex.name.trim());
+    }
+    for (final w in allWorkouts) {
       for (final e in w.exercises) {
         if (e.exerciseName.trim().isNotEmpty) {
-          loggedExerciseNames.add(e.exerciseName.trim());
+          exerciseNameSet.add(e.exerciseName.trim());
         }
       }
     }
+    final sortedExerciseNames = exerciseNameSet.toList()..sort();
     final defaultExercises = ['Bench Press', 'Squat', 'Deadlift', 'Overhead Press', 'Barbell Row'];
-    final allExerciseOptions = loggedExerciseNames.isNotEmpty ? loggedExerciseNames.toList() : defaultExercises;
+    final allExerciseOptions = sortedExerciseNames.isNotEmpty ? sortedExerciseNames : defaultExercises;
     final activeSelectedExercise = allExerciseOptions.contains(selectedExercise)
         ? selectedExercise
         : allExerciseOptions.first;
 
     // Real strength points for selected exercise
     final List<double> realExerciseMaxWeights = [];
-    for (final workout in completedWorkouts) {
+    for (final workout in allWorkouts) {
       final match = workout.exercises.firstWhere(
         (e) => e.exerciseName.toLowerCase() == activeSelectedExercise.toLowerCase(),
         orElse: () => WorkoutExercise(exerciseId: '', exerciseName: '', sets: []),
@@ -108,7 +117,7 @@ class ProgressScreen extends ConsumerWidget {
     // Dynamic Overall Volume & PR Calculations
     double totalVolumeKg = 0.0;
     double highestWeightLiftedKg = userActivity.maxWeightLiftedKg;
-    for (final w in completedWorkouts) {
+    for (final w in allWorkouts) {
       for (final e in w.exercises) {
         for (final s in e.sets) {
           totalVolumeKg += (s.reps * s.weightKg);
@@ -121,20 +130,28 @@ class ProgressScreen extends ConsumerWidget {
 
     final displayTotalVolume = UnitConverter.convertWeight(totalVolumeKg, unitSystem).toStringAsFixed(0);
     final displayHighestPR = UnitConverter.convertWeight(highestWeightLiftedKg, unitSystem).toStringAsFixed(1);
-    final totalLoggedCount = completedWorkouts.isNotEmpty ? completedWorkouts.length : userActivity.loggedWorkoutsCount;
+    final totalLoggedCount = allWorkouts.isNotEmpty ? allWorkouts.length : userActivity.loggedWorkoutsCount;
     final weightUnitLabel = UnitConverter.weightUnit(unitSystem);
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
+      decoration: BoxDecoration(
+        gradient: AppColors.backgroundGradientOf(context),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(tr('progress_analytics'), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: -0.3)),
+          title: Text(tr('progress_analytics'), style: TextStyle(color: AppColors.textPrimaryOf(context), fontWeight: FontWeight.bold, letterSpacing: -0.3)),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 16.0),
+              child: AppNotificationBell(),
+            ),
+          ],
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+        body: ResponsiveWebWrapper(
+          maxWidth: 1050,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -143,7 +160,7 @@ class ProgressScreen extends ConsumerWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(AppRadius.container),
                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                   boxShadow: AppColors.softGlow(AppColors.primary, opacity: 0.12, blur: 14),
@@ -151,25 +168,40 @@ class ProgressScreen extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildQuickStatItem(
-                      label: 'Workouts',
-                      value: '$totalLoggedCount',
-                      icon: Icons.fitness_center_rounded,
-                      color: AppColors.primary,
+                    Flexible(
+                      child: FittedBox(
+                        child: _buildQuickStatItem(
+                          context: context,
+                          label: 'Workouts',
+                          value: '$totalLoggedCount',
+                          icon: Icons.fitness_center_rounded,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
-                    Container(height: 36, width: 1, color: AppColors.border),
-                    _buildQuickStatItem(
-                      label: 'Volume',
-                      value: '$displayTotalVolume $weightUnitLabel',
-                      icon: Icons.graphic_eq_rounded,
-                      color: AppColors.secondary,
+                    Container(height: 36, width: 1, color: AppColors.borderOf(context)),
+                    Flexible(
+                      child: FittedBox(
+                        child: _buildQuickStatItem(
+                          context: context,
+                          label: 'Volume',
+                          value: '$displayTotalVolume $weightUnitLabel',
+                          icon: Icons.graphic_eq_rounded,
+                          color: AppColors.secondary,
+                        ),
+                      ),
                     ),
-                    Container(height: 36, width: 1, color: AppColors.border),
-                    _buildQuickStatItem(
-                      label: 'Max PR',
-                      value: '$displayHighestPR $weightUnitLabel',
-                      icon: Icons.emoji_events_rounded,
-                      color: AppColors.accent,
+                    Container(height: 36, width: 1, color: AppColors.borderOf(context)),
+                    Flexible(
+                      child: FittedBox(
+                        child: _buildQuickStatItem(
+                          context: context,
+                          label: 'Max PR',
+                          value: '$displayHighestPR $weightUnitLabel',
+                          icon: Icons.emoji_events_rounded,
+                          color: AppColors.accent,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -177,17 +209,21 @@ class ProgressScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // Exercise Selector Header Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
                 children: [
                   Text(
                     tr('strength_pr_title'),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.3),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.3, color: AppColors.textPrimaryOf(context)),
                   ),
                   Container(
+                    constraints: const BoxConstraints(maxWidth: 240),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
+                      color: AppColors.surfaceLightOf(context),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: accentColor.withValues(alpha: 0.4)),
                       boxShadow: AppColors.softGlow(accentColor, opacity: 0.1, blur: 8),
@@ -195,12 +231,17 @@ class ProgressScreen extends ConsumerWidget {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: activeSelectedExercise,
-                        dropdownColor: AppColors.surfaceLight,
+                        isExpanded: true,
+                        dropdownColor: AppColors.surfaceOf(context),
                         icon: const Icon(Icons.arrow_drop_down, color: accentColor),
                         items: allExerciseOptions.map((exName) {
                           return DropdownMenuItem(
                             value: exName,
-                            child: Text(exName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            child: Text(
+                              exName,
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimaryOf(context)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -225,9 +266,9 @@ class ProgressScreen extends ConsumerWidget {
                       label: Text(range),
                       selected: isSelected,
                       selectedColor: accentColor,
-                      backgroundColor: AppColors.surfaceLight,
+                      backgroundColor: AppColors.surfaceLightOf(context),
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                        color: isSelected ? Colors.white : AppColors.textSecondaryOf(context),
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                       onSelected: (selected) {
@@ -243,6 +284,7 @@ class ProgressScreen extends ConsumerWidget {
 
               // Strength Line Chart Card (Real User Data)
               _buildChartCard(
+                context: context,
                 title: '$activeSelectedExercise ${tr('weight_progress')} ($weightUnitLabel)',
                 accentColor: accentColor,
                 chartWidget: convertedChartPoints.isNotEmpty
@@ -256,9 +298,9 @@ class ProgressScreen extends ConsumerWidget {
                         height: 160,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
+                          color: AppColors.surfaceLightOf(context),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: AppColors.borderOf(context)),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -277,9 +319,28 @@ class ProgressScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 10),
                             ElevatedButton.icon(
-                              onPressed: () => context.go('/workout-logging'),
+                              onPressed: () {
+                                final exerciseList = ref.read(exerciseListProvider).value ?? [];
+                                final match = exerciseList.firstWhere(
+                                  (e) => e.name.toLowerCase() == activeSelectedExercise.toLowerCase(),
+                                  orElse: () => Exercise(
+                                    id: 'ex_custom',
+                                    name: activeSelectedExercise,
+                                    category: ExerciseCategory.strength,
+                                    muscleGroup: 'Chest',
+                                    equipment: 'Barbell',
+                                    difficulty: 'Beginner',
+                                    instructions: const ['Perform set with proper form.'],
+                                    commonMistakes: const [],
+                                    themeColor: AppColors.primary,
+                                    icon: Icons.fitness_center,
+                                  ),
+                                );
+                                ref.read(activeWorkoutProvider.notifier).addExercise(match);
+                                context.go('/workout-logging');
+                              },
                               icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                              label: const Text('Log Workout Now', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                              label: Text('Log $activeSelectedExercise Now', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -305,6 +366,7 @@ class ProgressScreen extends ConsumerWidget {
 
               // Body Weight History Chart
               _buildChartCard(
+                context: context,
                 title: '${tr('body_weight_trend')} ($weightUnitLabel)',
                 accentColor: AppColors.secondary,
                 chartWidget: SizedBox(
@@ -363,11 +425,13 @@ class ProgressScreen extends ConsumerWidget {
             ],
           ),
         ),
+        ),
       ),
     );
   }
 
   Widget _buildQuickStatItem({
+    required BuildContext context,
     required String label,
     required String value,
     required IconData icon,
@@ -380,16 +444,17 @@ class ProgressScreen extends ConsumerWidget {
           children: [
             Icon(icon, color: color, size: 16),
             const SizedBox(width: 4),
-            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimaryOf(context))),
           ],
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+        Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMutedOf(context), fontWeight: FontWeight.w500)),
       ],
     );
   }
 
   Widget _buildChartCard({
+    required BuildContext context,
     required String title,
     required Color accentColor,
     required Widget chartWidget,
@@ -397,7 +462,7 @@ class ProgressScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(AppRadius.container),
         border: Border.all(color: accentColor.withValues(alpha: 0.4)),
         boxShadow: AppColors.softGlow(accentColor, opacity: 0.15, blur: 14),
@@ -417,7 +482,7 @@ class ProgressScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimaryOf(context))),
             ],
           ),
           const SizedBox(height: 20),
@@ -537,7 +602,7 @@ class ProgressScreen extends ConsumerWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(AppRadius.container),
         border: Border.all(color: accentColor.withValues(alpha: 0.4)),
         boxShadow: AppColors.softGlow(accentColor, opacity: 0.15, blur: 14),

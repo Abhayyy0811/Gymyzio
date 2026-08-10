@@ -46,6 +46,7 @@ class DefaultFirebaseOptions {
     appId: '1:991712237098:web:placeholder',
     messagingSenderId: '991712237098',
     projectId: 'gysmysio',
+    authDomain: 'gysmysio.firebaseapp.com',
     storageBucket: 'gysmysio.firebasestorage.app',
   );
 

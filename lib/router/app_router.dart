@@ -11,6 +11,7 @@ import '../screens/progress_screen.dart';
 import '../screens/gamification_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/switch_account_screen.dart';
+import '../screens/dietchamp_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -90,6 +91,13 @@ final GoRouter appRouter = GoRouter(
           path: '/badges',
           name: 'badges',
           builder: (context, state) => const GamificationScreen(),
+        ),
+
+        // DietChamp Screen
+        GoRoute(
+          path: '/dietchamp',
+          name: 'dietchamp',
+          builder: (context, state) => const DietChampScreen(),
         ),
 
         // 9. Settings Screen

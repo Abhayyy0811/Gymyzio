@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_profile.dart';
 import '../models/exercise.dart';
 import '../models/workout_session.dart';
@@ -338,7 +341,7 @@ final progressDateRangeProvider = StateProvider<String>((ref) => 'Month');
 final customBmiOverrideProvider = StateProvider<double?>((ref) => null);
 final customBodyFatOverrideProvider = StateProvider<double?>((ref) => null);
 
-// User Activity & Real Progress Tracking Provider for Badges
+// User Activity & Real Progress Tracking Provider for Badges with Firestore & SharedPreferences Persistence
 class UserActivity {
   final int loggedWorkoutsCount;
   final int currentStreakDays;
@@ -347,6 +350,8 @@ class UserActivity {
   final bool hasLoggedCardio;
   final bool hasLoggedStrength;
   final Set<int> completedDayNumbers;
+  final Set<String> completedDates;
+  final Set<String> unlockedBadgeIds;
 
   const UserActivity({
     this.loggedWorkoutsCount = 0,
@@ -356,6 +361,8 @@ class UserActivity {
     this.hasLoggedCardio = false,
     this.hasLoggedStrength = false,
     this.completedDayNumbers = const {},
+    this.completedDates = const {},
+    this.unlockedBadgeIds = const {},
   });
 
   UserActivity copyWith({
@@ -366,6 +373,8 @@ class UserActivity {
     bool? hasLoggedCardio,
     bool? hasLoggedStrength,
     Set<int>? completedDayNumbers,
+    Set<String>? completedDates,
+    Set<String>? unlockedBadgeIds,
   }) {
     return UserActivity(
       loggedWorkoutsCount: loggedWorkoutsCount ?? this.loggedWorkoutsCount,
@@ -375,12 +384,73 @@ class UserActivity {
       hasLoggedCardio: hasLoggedCardio ?? this.hasLoggedCardio,
       hasLoggedStrength: hasLoggedStrength ?? this.hasLoggedStrength,
       completedDayNumbers: completedDayNumbers ?? this.completedDayNumbers,
+      completedDates: completedDates ?? this.completedDates,
+      unlockedBadgeIds: unlockedBadgeIds ?? this.unlockedBadgeIds,
     );
   }
 }
 
 class UserActivityNotifier extends StateNotifier<UserActivity> {
-  UserActivityNotifier() : super(const UserActivity());
+  UserActivityNotifier() : super(const UserActivity()) {
+    initUserActivity();
+  }
+
+  /// Load persisted unlocked badges & activity from SharedPreferences & Firestore
+  Future<void> initUserActivity() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final localBadges = prefs.getStringList('unlocked_badge_ids') ?? [];
+      if (localBadges.isNotEmpty) {
+        state = state.copyWith(unlockedBadgeIds: {...state.unlockedBadgeIds, ...localBadges});
+      }
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final docSnap = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+        if (docSnap.exists && docSnap.data() != null) {
+          final data = docSnap.data()!;
+          if (data['unlockedBadgeIds'] != null) {
+            final List<dynamic> firestoreBadges = data['unlockedBadgeIds'] as List<dynamic>;
+            final remoteSet = firestoreBadges.map((e) => e.toString()).toSet();
+            state = state.copyWith(unlockedBadgeIds: {...state.unlockedBadgeIds, ...remoteSet});
+            await prefs.setStringList('unlocked_badge_ids', state.unlockedBadgeIds.toList());
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [initUserActivity] Error initializing badge persistence: $e');
+      }
+    }
+  }
+
+  /// Permanently unlock a badge by unique ID across Local Storage & Firestore Backend
+  Future<void> unlockBadge(String badgeId) async {
+    if (badgeId.isEmpty || state.unlockedBadgeIds.contains(badgeId)) return;
+
+    final newUnlockedSet = {...state.unlockedBadgeIds, badgeId};
+    state = state.copyWith(unlockedBadgeIds: newUnlockedSet);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('unlocked_badge_ids', newUnlockedSet.toList());
+
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set(
+          {
+            'unlockedBadgeIds': FieldValue.arrayUnion([badgeId]),
+            'lastUpdated': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [unlockBadge] Error persisting badge $badgeId to backend: $e');
+      }
+    }
+  }
 
   void reset() {
     state = const UserActivity();
@@ -391,11 +461,14 @@ class UserActivityNotifier extends StateNotifier<UserActivity> {
     required double maxWeight,
     required bool isCardio,
     required bool isStrength,
+    DateTime? workoutDate,
   }) {
-    final now = DateTime.now();
+    final now = workoutDate ?? DateTime.now();
     final dayNum = now.day;
+    final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final newCount = state.loggedWorkoutsCount + 1;
     final newDays = {...state.completedDayNumbers, dayNum};
+    final newDates = {...state.completedDates, dateStr};
     final newStreak = newDays.length;
     final newMaxWeight = maxWeight > state.maxWeightLiftedKg ? maxWeight : state.maxWeightLiftedKg;
     final newExercises = {...state.distinctExercisesTried, ...exerciseIds};
@@ -408,6 +481,7 @@ class UserActivityNotifier extends StateNotifier<UserActivity> {
       hasLoggedCardio: state.hasLoggedCardio || isCardio,
       hasLoggedStrength: state.hasLoggedStrength || isStrength,
       completedDayNumbers: newDays,
+      completedDates: newDates,
     );
   }
 }

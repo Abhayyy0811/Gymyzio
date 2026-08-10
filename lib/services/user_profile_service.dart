@@ -76,6 +76,35 @@ class UserProfileService {
     }
   }
 
+  /// Save a custom user-uploaded photo URL (base64 data URL) in Firestore
+  Future<void> saveCustomPhotoUrl(String uid, String dataUrl) async {
+    if (uid.isEmpty) return;
+    try {
+      await _firestore.collection('users').doc(uid).set(
+        {'customPhotoUrl': dataUrl},
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [saveCustomPhotoUrl] Error: $e');
+      }
+    }
+  }
+
+  /// Clear the custom user photo URL from Firestore
+  Future<void> clearCustomPhotoUrl(String uid) async {
+    if (uid.isEmpty) return;
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'customPhotoUrl': FieldValue.delete(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [clearCustomPhotoUrl] Error: $e');
+      }
+    }
+  }
+
   /// Check if a username is already taken in Firestore (case-insensitive check against username_lowercase)
   Future<bool> isUsernameTaken(String username, {String? excludeUid}) async {
     final cleanLower = username.trim().toLowerCase();
@@ -240,7 +269,7 @@ class UserProfileService {
     final userDoc = _firestore.collection('users').doc(uid);
 
     // 1. Safe deletion of subcollections
-    final subcollections = ['workouts', 'personalRecords', 'activity', 'badges', 'history', 'settings'];
+    final subcollections = ['workouts', 'personalRecords', 'activity', 'badges', 'history', 'settings', 'body_weight_logs'];
     for (final sub in subcollections) {
       try {
         final snapshots = await userDoc.collection(sub).get();
@@ -263,6 +292,23 @@ class UserProfileService {
     } catch (e) {
       if (kDebugMode) {
         print('⚠️ [deleteUserProfile] Main doc deletion error: $e');
+      }
+    }
+  }
+
+  /// Administrative: Wipe all user documents and subcollections in Firestore
+  Future<void> wipeAllUserDatabase() async {
+    try {
+      final usersSnap = await _firestore.collection('users').get();
+      for (final userDoc in usersSnap.docs) {
+        await deleteUserProfile(userDoc.id);
+      }
+      if (kDebugMode) {
+        print('✅ [wipeAllUserDatabase] All Firestore user documents wiped successfully.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [wipeAllUserDatabase] Error wiping users collection: $e');
       }
     }
   }

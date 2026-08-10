@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_state_providers.dart';
 import '../models/exercise.dart';
-import '../widgets/exercise_gif_widget.dart';
+import '../widgets/interactive_exercise_player.dart';
+import '../widgets/responsive_web_wrapper.dart';
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
   final String exerciseId;
@@ -59,8 +60,10 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
+      body: ResponsiveWebWrapper(
+        maxWidth: 900,
+        child: SingleChildScrollView(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Real Animated GIF Demonstration Banner
@@ -245,25 +248,18 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
 
   Widget _buildGifHeaderBanner(Exercise exercise) {
-    return Container(
-      height: 280,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        boxShadow: AppColors.softGlow(exercise.themeColor, opacity: 0.2, blur: 16),
-      ),
-      child: ExerciseGifWidget(
-        assetPath: exercise.assetPath,
-        gifUrl: exercise.gifUrl,
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: InteractiveExercisePlayer(
+        exercise: exercise,
+        height: 300,
         fit: BoxFit.contain,
-        width: double.infinity,
-        height: double.infinity,
       ),
     );
   }

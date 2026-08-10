@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  // Clean High-Contrast White & Royal Blue Color System
+  static ThemeMode currentThemeMode = ThemeMode.light;
+
+  // Static Fallback Constants for Light Theme
   static const Color background = Color(0xFFFFFFFF); // Pure Crisp White
   static const Color surface = Color(0xFFFFFFFF); // Pure White Surface
   static const Color surfaceLight = Color(0xFFF8FAFC); // Subtle Off-White Neutral
@@ -56,6 +58,49 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  // Dynamic Theme-Aware Helpers
+  static bool isDarkMode(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  static Color backgroundOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFF0B0F19) : const Color(0xFFFFFFFF);
+  }
+
+  static Color surfaceOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF);
+  }
+
+  static Color surfaceLightOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFF334155) : const Color(0xFFF8FAFC);
+  }
+
+  static Color borderOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+  }
+
+  static Color textPrimaryOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  }
+
+  static Color textSecondaryOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+  }
+
+  static Color textMutedOf(BuildContext context) {
+    return isDarkMode(context) ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  }
+
+  static LinearGradient backgroundGradientOf(BuildContext context) {
+    return LinearGradient(
+      colors: isDarkMode(context)
+          ? const [Color(0xFF0B0F19), Color(0xFF0F172A)]
+          : const [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+    );
+  }
 
   static List<BoxShadow> softGlow(Color accentColor, {double opacity = 0.08, double blur = 12.0}) {
     return [
@@ -175,8 +220,99 @@ class AppTheme {
     );
   }
 
-  // Alias darkTheme to lightTheme for full high-contrast white & blue theme compliance
-  static ThemeData get darkTheme => lightTheme;
+  static ThemeData get darkTheme {
+    const darkBg = Color(0xFF0B0F19); // Pitch Obsidian Black
+    const darkSurface = Color(0xFF1E293B); // Dark Surface Card
+    const darkSurfaceLight = Color(0xFF334155); // Neutral Dark Element
+    const darkBorder = Color(0xFF334155);
+    const darkTextPrimary = Color(0xFFF8FAFC);
+    const darkTextSecondary = Color(0xFFCBD5E1);
+
+    return ThemeData.dark().copyWith(
+      scaffoldBackgroundColor: darkBg,
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.primary,
+        secondary: AppColors.secondary,
+        surface: darkSurface,
+        error: Colors.redAccent,
+      ),
+      textTheme: GoogleFonts.outfitTextTheme(ThemeData.dark().textTheme).copyWith(
+        displayLarge: GoogleFonts.outfit(
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+          color: darkTextPrimary,
+          letterSpacing: -0.5,
+        ),
+        headlineMedium: GoogleFonts.outfit(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: darkTextPrimary,
+          letterSpacing: -0.3,
+        ),
+        titleLarge: GoogleFonts.outfit(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: darkTextPrimary,
+        ),
+        bodyLarge: GoogleFonts.outfit(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: darkTextPrimary,
+        ),
+        bodyMedium: GoogleFonts.outfit(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: darkTextSecondary,
+        ),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: darkBg,
+        elevation: 0,
+        centerTitle: false,
+        iconTheme: IconThemeData(color: darkTextPrimary),
+        titleTextStyle: TextStyle(
+          color: darkTextPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
+      cardTheme: CardThemeData(
+        color: darkSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: const BorderSide(color: darkBorder, width: 1),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: darkSurfaceLight,
+        selectedColor: AppColors.primary,
+        disabledColor: darkSurface,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        labelStyle: GoogleFonts.outfit(color: darkTextPrimary, fontWeight: FontWeight.w600),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: darkSurfaceLight,
+        hintStyle: const TextStyle(color: Color(0xFF64748B)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+      ),
+    );
+  }
 }
 
 /// Reusable micro-animation tap wrapper providing scale and opacity response for all interactive buttons.

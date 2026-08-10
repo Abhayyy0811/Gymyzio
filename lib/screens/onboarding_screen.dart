@@ -11,6 +11,7 @@ import '../models/user_profile.dart';
 import '../widgets/password_field.dart';
 import '../widgets/shine_button.dart';
 import '../widgets/shake_widget.dart';
+import '../widgets/responsive_web_wrapper.dart';
 import '../services/account_registry_service.dart';
 import '../utils/phone_utils.dart';
 import '../utils/username_utils.dart';
@@ -263,14 +264,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(userProfileProvider);
 
-    return Container(
+    return Theme(
+      data: AppTheme.lightTheme,
+      child: Container(
       decoration: const BoxDecoration(
         gradient: AppColors.backgroundGradient,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
-        child: Column(
+          child: ResponsiveWebWrapper(
+            maxWidth: 750,
+            child: Column(
           children: [
             // Top Navigation & Page Indicator (Only show for pages 1, 2, 3)
             if (_currentPage > 0)
@@ -317,30 +322,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ),
 
-            // Page View Content
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(), // Disable swipe to enforce auth & steps
-                onPageChanged: (page) {
-                  setState(() {
-                    _currentPage = page;
-                  });
-                },
-                children: [
-                  _buildMultiMethodSignInPage(),
-                  _buildLanguagePage(profile),
-                  _buildUnitPage(profile),
-                  _buildProfileFormPage(),
-                ],
-              ),
+                // Page View Content
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(), // Disable swipe to enforce auth & steps
+                    onPageChanged: (page) {
+                      setState(() {
+                        _currentPage = page;
+                      });
+                    },
+                    children: [
+                      _buildMultiMethodSignInPage(),
+                      _buildLanguagePage(profile),
+                      _buildUnitPage(profile),
+                      _buildProfileFormPage(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     ),
-  );
-}
+    );
+  }
 
   // Step 0: Multi-Method Sign In Screen (Renders Welcome Login Card directly)
   Widget _buildMultiMethodSignInPage() {
@@ -517,9 +524,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 440),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: AppColors.surfaceOf(context),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border, width: 1),
+            border: Border.all(color: AppColors.borderOf(context), width: 1),
             boxShadow: AppColors.softGlow(AppColors.primary, opacity: 0.15, blur: 24),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
@@ -779,31 +786,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Primary Fitness Goal',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       initialValue: _selectedGoal,
-                      hint: const Text('Select Primary Fitness Goal', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                      hint: Text('Select Primary Fitness Goal', style: TextStyle(color: AppColors.textMutedOf(context), fontSize: 14)),
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: AppColors.surfaceLight,
+                        fillColor: AppColors.surfaceLightOf(context),
                         prefixIcon: const Icon(Icons.sports_score_rounded, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.border),
+                          borderSide: BorderSide(color: AppColors.borderOf(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
                         ),
                       ),
-                      dropdownColor: AppColors.surfaceLight,
+                      dropdownColor: AppColors.surfaceOf(context),
                       items: ['Strength', 'Cardio', 'Both'].map((goal) {
-                        return DropdownMenuItem(value: goal, child: Text(goal));
+                        return DropdownMenuItem(value: goal, child: Text(goal, style: TextStyle(color: AppColors.textPrimaryOf(context))));
                       }).toList(),
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedGoal = val);
@@ -818,31 +826,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Experience Level',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       initialValue: _selectedExperience,
-                      hint: const Text('Select Experience Level', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                      hint: Text('Select Experience Level', style: TextStyle(color: AppColors.textMutedOf(context), fontSize: 14)),
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: AppColors.surfaceLight,
+                        fillColor: AppColors.surfaceLightOf(context),
                         prefixIcon: const Icon(Icons.stars_outlined, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.border),
+                          borderSide: BorderSide(color: AppColors.borderOf(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
                         ),
                       ),
-                      dropdownColor: AppColors.surfaceLight,
+                      dropdownColor: AppColors.surfaceOf(context),
                       items: ['Beginner', 'Intermediate', 'Advanced'].map((exp) {
-                        return DropdownMenuItem(value: exp, child: Text(exp));
+                        return DropdownMenuItem(value: exp, child: Text(exp, style: TextStyle(color: AppColors.textPrimaryOf(context))));
                       }).toList(),
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedExperience = val);
@@ -898,7 +907,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 13, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
         FormField<String>(
@@ -911,10 +920,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: AppColors.surfaceLightOf(context),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: hasError ? Colors.redAccent : AppColors.border,
+                      color: hasError ? Colors.redAccent : AppColors.borderOf(context),
                       width: hasError ? 1.5 : 1.0,
                     ),
                   ),
@@ -945,7 +954,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Container(
                         height: 24,
                         width: 1,
-                        color: AppColors.border.withValues(alpha: 0.5),
+                        color: AppColors.borderOf(context).withValues(alpha: 0.5),
                       ),
                       const SizedBox(width: 10),
                       Icon(icon, color: AppColors.primary, size: 20),
@@ -963,14 +972,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           onChanged: (val) {
                             formFieldState.didChange(val);
                           },
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
+                          style: TextStyle(
+                            color: AppColors.textPrimaryOf(context),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                           decoration: InputDecoration(
                             hintText: hintText,
-                            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                            hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                             suffixText: suffix != null ? ' $suffix' : null,
                             suffixStyle: const TextStyle(
                               color: AppColors.primary,
@@ -1380,6 +1389,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
   bool get _isSignUp => _authMode == _AuthMode.signUp;
   bool get _isChooseUsername => _authMode == _AuthMode.chooseUsername;
   bool get _isForgotPassword => _authMode == _AuthMode.forgotPassword;
+  bool get _isGoogleAuthFlow => _authMode == _AuthMode.chooseUsername && _signUpDraft == null;
 
 
   @override
@@ -1685,6 +1695,16 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
   Future<void> _completeRegistrationWithUsername() async {
     final chosenUsername = _usernameController.text.trim();
     final phoneInput = _phoneController.text.trim();
+
+    if (_isGoogleAuthFlow && phoneInput.isNotEmpty) {
+      final phoneDigitsOnly = phoneInput.replaceAll(RegExp(r'\D'), '');
+      if (phoneDigitsOnly.length != 10) {
+        setState(() => _phoneError = "Phone number must contain exactly 10 numeric digits");
+        _phoneShakeKey.currentState?.shake();
+        return;
+      }
+    }
+
     final rawPhone = phoneInput.isNotEmpty ? phoneInput : (_signUpDraft?.phone ?? '');
     final phoneToUse = rawPhone.isEmpty
         ? ''
@@ -2056,9 +2076,9 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
     return Container(
       constraints: const BoxConstraints(maxWidth: 440),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: AppColors.borderOf(context), width: 1),
         boxShadow: AppColors.softGlow(AppColors.primary, opacity: 0.15, blur: 24),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
@@ -2069,18 +2089,31 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
           // Top Graphic Icon Area (Dumbbell Logo inside glowing dark circular container)
           Center(
             child: Container(
-              width: 64,
-              height: 64,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
-                boxShadow: AppColors.softGlow(AppColors.primary, opacity: 0.25, blur: 16),
+                borderRadius: BorderRadius.circular(80 * 0.22),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: const Icon(
-                Icons.fitness_center_rounded,
-                color: AppColors.primary,
-                size: 32,
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(80 * 0.12),
+                child: Image.asset(
+                  'assets/icon/app_icon_avatar.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.fitness_center_rounded,
+                    color: AppColors.primary,
+                    size: 36,
+                  ),
+                ),
               ),
             ),
           ),
@@ -2094,10 +2127,10 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                     ? 'Choose Username'
                     : (_authMode == _AuthMode.forgotPassword ? 'Forgot Password' : 'Sign In')),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: AppColors.textPrimaryOf(context),
               letterSpacing: -0.5,
             ),
           ),
@@ -2111,9 +2144,9 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                         ? 'Enter your registered email to receive a password reset link'
                         : 'Welcome back! Please enter your details')),
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryOf(context),
               height: 1.35,
             ),
           ),
@@ -2121,6 +2154,86 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
 
           // --- STEP 2: CHOOSE USERNAME SCREEN FORM ---
           if (_authMode == _AuthMode.chooseUsername) ...[
+            if (_isGoogleAuthFlow) ...[
+              ShakeWidget(
+                key: _phoneShakeKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _phoneController,
+                      focusNode: _phoneFocusNode,
+                      textInputAction: TextInputAction.next,
+                      keyboardType: TextInputType.phone,
+                      maxLength: 10,
+                      onSubmitted: (_) => _usernameFocusNode.requestFocus(),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      decoration: InputDecoration(
+                        counterText: '',
+                        labelText: 'Phone Number',
+                        hintText: '9876543210',
+                        filled: true,
+                        fillColor: AppColors.surfaceLight,
+                        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                        prefixIcon: InkWell(
+                          onTap: () => _openCountryPickerBottomSheet(context),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 12, right: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.phone_iphone_rounded, color: AppColors.primary, size: 20),
+                                const SizedBox(width: 6),
+                                Text(
+                                  kCountryCallingCodes.firstWhere((c) => c.code == _selectedCountryCode, orElse: () => kCountryCallingCodes.first).flag,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _selectedCountryCode,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_drop_down_rounded, color: AppColors.primary, size: 22),
+                                Container(
+                                  height: 20,
+                                  width: 1,
+                                  margin: const EdgeInsets.only(left: 4, right: 8),
+                                  color: AppColors.border,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _phoneError != null ? Colors.redAccent : AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _phoneError != null ? Colors.redAccent : AppColors.primary, width: 1.8),
+                        ),
+                      ),
+                    ),
+                    if (_phoneError != null) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(_phoneError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w500)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             ShakeWidget(
               key: _usernameShakeKey,
               child: Column(
@@ -2131,11 +2244,14 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                     focusNode: _usernameFocusNode,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _handleKeyboardSubmit(),
+                    style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       labelText: 'Username',
+                      labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
                       hintText: 'enter username',
+                      hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                       filled: true,
-                      fillColor: AppColors.surfaceLight,
+                      fillColor: AppColors.surfaceLightOf(context),
                       prefixIcon: const Padding(
                         padding: EdgeInsets.only(left: 14, right: 6),
                         child: Text(
@@ -2154,7 +2270,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                         borderSide: BorderSide(
                           color: _usernameError != null
                               ? Colors.redAccent
-                              : (_isUsernameAvailable ? Colors.greenAccent : AppColors.border),
+                              : (_isUsernameAvailable ? Colors.greenAccent : AppColors.borderOf(context)),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -2172,13 +2288,13 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
 
                   // Real-time Status / Feedback message below field
                   if (_isCheckingUsername) ...[
-                    const Padding(
-                      padding: EdgeInsets.only(left: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
                       child: Row(
                         children: [
-                          SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
-                          SizedBox(width: 8),
-                          Text('Checking username availability...', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          const SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                          const SizedBox(width: 8),
+                          Text('Checking username availability...', style: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 12)),
                         ],
                       ),
                     ),
@@ -2209,9 +2325,9 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
 
             // Username Suggestions Chips
             if (_usernameSuggestions.isNotEmpty) ...[
-              const Text(
+              Text(
                 'Suggested Usernames:',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 12, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -2228,17 +2344,17 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : AppColors.surfaceLight,
+                        color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : AppColors.surfaceLightOf(context),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected ? AppColors.primary : AppColors.border,
+                          color: isSelected ? AppColors.primary : AppColors.borderOf(context),
                           width: isSelected ? 1.5 : 1.0,
                         ),
                       ),
                       child: Text(
                         '@$suggestion',
                         style: TextStyle(
-                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                          color: isSelected ? AppColors.primary : AppColors.textPrimaryOf(context),
                           fontSize: 12,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
@@ -2308,16 +2424,19 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _forgotPassword(),
                     keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       labelText: 'Email Address',
+                      labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
                       hintText: 'name@example.com',
+                      hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                       filled: true,
-                      fillColor: AppColors.surfaceLight,
+                      fillColor: AppColors.surfaceLightOf(context),
                       prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: _emailError != null ? Colors.redAccent : AppColors.border),
+                        borderSide: BorderSide(color: _emailError != null ? Colors.redAccent : AppColors.borderOf(context)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -2385,16 +2504,19 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                       focusNode: _emailFocusNode,
                       textInputAction: TextInputAction.next,
                       onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         labelText: 'Email, Phone, or Username',
+                        labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
                         hintText: 'username, name@example.com, or +91 9876543210',
+                        hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                         filled: true,
-                        fillColor: AppColors.surfaceLight,
+                        fillColor: AppColors.surfaceLightOf(context),
                         prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _emailError != null ? Colors.redAccent : AppColors.border),
+                          borderSide: BorderSide(color: _emailError != null ? Colors.redAccent : AppColors.borderOf(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2425,21 +2547,26 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                     TextField(
                       controller: _nameController,
                       focusNode: _nameFocusNode,
+                      textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
                       onSubmitted: (_) => _phoneFocusNode.requestFocus(),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                        TitleCaseTextInputFormatter(),
                       ],
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         labelText: 'Full Name',
+                        labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
                         hintText: 'John Doe',
+                        hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                         filled: true,
-                        fillColor: AppColors.surfaceLight,
+                        fillColor: AppColors.surfaceLightOf(context),
                         prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _nameError != null ? Colors.redAccent : AppColors.border),
+                          borderSide: BorderSide(color: _nameError != null ? Colors.redAccent : AppColors.borderOf(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2475,12 +2602,15 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
                       ],
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         counterText: '',
                         labelText: 'Phone Number',
+                        labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
                         hintText: '9876543210',
+                        hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                         filled: true,
-                        fillColor: AppColors.surfaceLight,
+                        fillColor: AppColors.surfaceLightOf(context),
                         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                         prefixIcon: InkWell(
                           onTap: () => _openCountryPickerBottomSheet(context),
@@ -2499,8 +2629,8 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                                 const SizedBox(width: 4),
                                 Text(
                                   _selectedCountryCode,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimary,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimaryOf(context),
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -2510,7 +2640,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                                   height: 20,
                                   width: 1,
                                   margin: const EdgeInsets.only(left: 4, right: 8),
-                                  color: AppColors.border,
+                                  color: AppColors.borderOf(context),
                                 ),
                               ],
                             ),
@@ -2519,7 +2649,7 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _phoneError != null ? Colors.redAccent : AppColors.border),
+                          borderSide: BorderSide(color: _phoneError != null ? Colors.redAccent : AppColors.borderOf(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2554,16 +2684,19 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
                       inputFormatters: [
                         LowercaseTextInputFormatter(),
                       ],
+                      style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         labelText: 'Email Address',
+                        labelStyle: TextStyle(color: AppColors.textSecondaryOf(context), fontSize: 13),
                         hintText: 'john@example.com',
+                        hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                         filled: true,
-                        fillColor: AppColors.surfaceLight,
+                        fillColor: AppColors.surfaceLightOf(context),
                         prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _emailError != null ? Colors.redAccent : AppColors.border),
+                          borderSide: BorderSide(color: _emailError != null ? Colors.redAccent : AppColors.borderOf(context)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2918,9 +3051,9 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOf(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
@@ -2929,7 +3062,7 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.border,
+              color: AppColors.borderOf(context),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -2940,17 +3073,17 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
               children: [
                 const Icon(Icons.public_rounded, color: AppColors.primary, size: 22),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Select Country Code',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
+                    color: AppColors.textPrimaryOf(context),
                   ),
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                  icon: Icon(Icons.close_rounded, color: AppColors.textMutedOf(context)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -2962,13 +3095,14 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val),
               autofocus: false,
+              style: TextStyle(color: AppColors.textPrimaryOf(context), fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search country name or code (e.g. India, +91, A...)',
-                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                hintStyle: TextStyle(color: AppColors.textMutedOf(context), fontSize: 13),
                 prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
+                        icon: Icon(Icons.clear_rounded, size: 18, color: AppColors.textMutedOf(context)),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
@@ -2976,19 +3110,19 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
                       )
                     : null,
                 filled: true,
-                fillColor: AppColors.surfaceLight,
+                fillColor: AppColors.surfaceLightOf(context),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
               ),
             ),
           ),
-          const Divider(height: 1, color: AppColors.border),
+          Divider(height: 1, color: AppColors.borderOf(context)),
           Expanded(
             child: filtered.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No matching countries found',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                      style: TextStyle(color: AppColors.textMutedOf(context), fontSize: 14),
                     ),
                   )
                 : ListView(
@@ -3008,18 +3142,18 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
                           ),
                         ),
                         _buildCountryTile(currentSelected, isSelected: true),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          child: Divider(color: AppColors.border, height: 1),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Divider(color: AppColors.borderOf(context), height: 1),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.only(left: 20, top: 4, bottom: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 20, top: 4, bottom: 4),
                           child: Text(
                             'ALL COUNTRIES',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textMuted,
+                              color: AppColors.textMutedOf(context),
                               letterSpacing: 0.8,
                             ),
                           ),
@@ -3053,7 +3187,7 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                  color: isSelected ? AppColors.primary : AppColors.textPrimaryOf(context),
                 ),
               ),
             ),
@@ -3062,7 +3196,7 @@ class _CountryPickerBottomSheetContentState extends State<_CountryPickerBottomSh
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                color: isSelected ? AppColors.primary : AppColors.textSecondaryOf(context),
               ),
             ),
             if (isSelected) ...[
@@ -3177,9 +3311,14 @@ class TitleCaseTextInputFormatter extends TextInputFormatter {
     }
 
     final String formatted = buffer.toString();
-    return newValue.copyWith(
+    int selectionIndex = newValue.selection.end;
+    if (selectionIndex > formatted.length) {
+      selectionIndex = formatted.length;
+    }
+
+    return TextEditingValue(
       text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
+      selection: TextSelection.collapsed(offset: selectionIndex),
     );
   }
 }

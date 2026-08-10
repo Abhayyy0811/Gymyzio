@@ -1,11 +1,16 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
+  static const String _webClientId = '991712237098-r8goommung4n32qbvqai5lv16g3cmkk9.apps.googleusercontent.com';
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '991712237098-r8goommung4n32qbvqai5lv16g3cmkk9.apps.googleusercontent.com',
-  );
+  final GoogleSignIn? _googleSignIn = kIsWeb
+      ? null
+      : GoogleSignIn(
+          serverClientId: _webClientId,
+        );
 
   /// Stream of Auth State Changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -16,16 +21,22 @@ class AuthService {
   /// Signs in with Google using GoogleAuthProvider
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // Cancelled
+      if (kIsWeb) {
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+        return await _auth.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignInAccount? googleUser = await _googleSignIn?.signIn();
+        if (googleUser == null) return null; // Cancelled
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final OAuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
 
-      return await _auth.signInWithCredential(credential);
+        return await _auth.signInWithCredential(credential);
+      }
     } catch (e) {
       rethrow;
     }
@@ -118,7 +129,9 @@ class AuthService {
   /// Signs out of both Firebase Auth and Google Sign-In sessions
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut();
+      if (!kIsWeb && _googleSignIn != null) {
+        await _googleSignIn.signOut();
+      }
     } catch (_) {}
     await _auth.signOut();
   }
