@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../widgets/fitgine_ai_floating_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/fitgine_ai_floating_button.dart';
 import '../theme/app_theme.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/app_state_providers.dart';
 
 class MainShellScaffold extends ConsumerWidget {
   final Widget child;
@@ -50,6 +52,18 @@ class MainShellScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final profile = ref.watch(userProfileProvider);
+
+    // Strict Guard: Redirect incomplete profiles away from main shell to /onboarding
+    if (currentUser != null && !profile.isFullyCompleted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go('/onboarding');
+        }
+      });
+    }
+
     final selectedIndex = _calculateSelectedIndex(context);
     final tr = ref.watch(trProvider);
     final screenWidth = MediaQuery.of(context).size.width;

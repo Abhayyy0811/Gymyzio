@@ -62,34 +62,35 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
         ref.read(userProfileProvider.notifier).setProfile(result.profile);
         ref.read(isNewUserProvider.notifier).state = result.isNewUser;
 
-        // Keep local device account registry up to date
-        String method = 'email';
-        if (currentUser.providerData.isNotEmpty) {
-          final p = currentUser.providerData.first.providerId;
-          if (p.contains('google')) {
-            method = 'google';
-          } else if (p.contains('phone')) {
-            method = 'phone';
-          }
-        } else if (currentUser.phoneNumber != null && currentUser.phoneNumber!.isNotEmpty) {
-          method = 'phone';
-        }
-
-        await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
-          SavedAccount(
-            uid: currentUser.uid,
-            displayName: currentUser.displayName ?? result.profile.name,
-            identifier: currentUser.email ?? currentUser.phoneNumber ?? result.profile.email ?? 'Athlete',
-            photoUrl: currentUser.photoURL,
-            signInMethod: method,
-            lastUsedAt: DateTime.now(),
-          ),
-        );
-
         if (!mounted) return;
 
-        // Check if user has completed profile setup or has valid data
-        if (result.profile.isProfileComplete || (result.profile.name.isNotEmpty && result.profile.name != 'Athlete')) {
+        // Check if user has strictly completed full profile setup
+        if (result.profile.isFullyCompleted) {
+          // Keep local device account registry up to date for completed accounts
+          String method = 'email';
+          if (currentUser.providerData.isNotEmpty) {
+            final p = currentUser.providerData.first.providerId;
+            if (p.contains('google')) {
+              method = 'google';
+            } else if (p.contains('phone')) {
+              method = 'phone';
+            }
+          } else if (currentUser.phoneNumber != null && currentUser.phoneNumber!.isNotEmpty) {
+            method = 'phone';
+          }
+
+          await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
+            SavedAccount(
+              uid: currentUser.uid,
+              displayName: currentUser.displayName ?? result.profile.name,
+              identifier: currentUser.email ?? currentUser.phoneNumber ?? result.profile.email ?? 'Athlete',
+              photoUrl: currentUser.photoURL,
+              signInMethod: method,
+              lastUsedAt: DateTime.now(),
+            ),
+          );
+
+          if (!mounted) return;
           context.go('/home');
         } else {
           context.go('/onboarding');

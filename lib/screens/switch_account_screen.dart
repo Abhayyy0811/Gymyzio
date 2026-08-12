@@ -110,30 +110,40 @@ class _SwitchAccountScreenState extends ConsumerState<SwitchAccountScreen> {
 
     final identifier = newUser.email ?? newUser.phoneNumber ?? result.profile.email ?? 'Athlete';
 
-    // Update device account registry's lastUsedAt for the newly active account
-    await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
-      SavedAccount(
-        uid: newUser.uid,
-        displayName: newUser.displayName ?? result.profile.name,
-        identifier: identifier,
-        photoUrl: newUser.photoURL,
-        signInMethod: method,
-        lastUsedAt: DateTime.now(),
-      ),
-    );
+    // Only update device account registry for completed accounts
+    if (result.profile.isFullyCompleted) {
+      await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
+        SavedAccount(
+          uid: newUser.uid,
+          displayName: newUser.displayName ?? result.profile.name,
+          identifier: identifier,
+          photoUrl: newUser.photoURL,
+          signInMethod: method,
+          lastUsedAt: DateTime.now(),
+        ),
+      );
+    }
 
     if (!mounted) return;
 
     final displayName = newUser.displayName ?? result.profile.name;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Switched to $displayName ($identifier) 🎉'),
-        backgroundColor: AppColors.primary,
-      ),
-    );
-
-    // Navigate to Home Dashboard showing newly active account's own data
-    context.go('/home');
+    if (result.profile.isFullyCompleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Switched to $displayName ($identifier) 🎉'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+      context.go('/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Switched to $displayName ($identifier). Please complete your profile setup.'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+      context.go('/onboarding');
+    }
   }
 
   void _handleAuthError(FirebaseAuthException e) {

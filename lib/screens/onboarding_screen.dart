@@ -82,6 +82,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     _selectedGoal = (profile.goal.isNotEmpty && profile.goal != 'Strength') ? profile.goal : null;
     _selectedExperience = (profile.experienceLevel.isNotEmpty && profile.experienceLevel != 'Intermediate') ? profile.experienceLevel : null;
+
+    // Auto-resume onboarding step for authenticated users with incomplete profiles
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final currentProfile = ref.read(userProfileProvider);
+      if (currentUser != null && !currentProfile.isFullyCompleted) {
+        if (_currentPage == 0) {
+          _pageController.animateToPage(
+            1,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -120,6 +135,52 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     }
   }
 
+  /// System and UI back button handler for incomplete profiles
+  Future<bool> _handleOnboardingBack() async {
+    if (_currentPage > 1) {
+      _previousPage();
+      return false;
+    }
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final profile = ref.read(userProfileProvider);
+    if (currentUser != null && !profile.isFullyCompleted) {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Incomplete Profile Setup'),
+          content: const Text(
+            'Your account registration is not complete. If you exit now, you will be signed out of your account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Continue Setup'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Sign Out & Exit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      if (shouldExit == true) {
+        await ref.read(authServiceProvider).signOut();
+        if (mounted) {
+          setState(() {
+            _currentPage = 0;
+          });
+        }
+      }
+      return false;
+    }
+    return true;
+  }
+
   /// Centralized Auth Success handler
   Future<void> _handleAuthSuccess(User user) async {
     try {
@@ -128,35 +189,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
       // Update Riverpod user profile state
       ref.read(userProfileProvider.notifier).setProfile(result.profile);
-      ref.read(isNewUserProvider.notifier).state = result.isNewUser;
-
-      // Keep local device account registry up to date
-      String method = 'email';
-      if (user.providerData.isNotEmpty) {
-        final p = user.providerData.first.providerId;
-        if (p.contains('google')) {
-          method = 'google';
-        } else if (p.contains('phone')) {
-          method = 'phone';
-        }
-      } else if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
-        method = 'phone';
-      }
-
-      await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
-        SavedAccount(
-          uid: user.uid,
-          displayName: user.displayName ?? result.profile.name,
-          identifier: user.email ?? user.phoneNumber ?? result.profile.email ?? 'Athlete',
-          photoUrl: user.photoURL,
-          signInMethod: method,
-          lastUsedAt: DateTime.now(),
-        ),
-      );
+      ref.read(isNewUserProvider.notifier).state = !result.profile.isFullyCompleted;
 
       if (!mounted) return;
 
-      if (result.isNewUser) {
+      if (!result.profile.isFullyCompleted) {
         final autoName = user.displayName ?? result.profile.name;
         if (autoName.isNotEmpty && autoName != 'Athlete') {
           _nameController.text = autoName;
@@ -174,6 +211,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           curve: Curves.easeInOut,
         );
       } else {
+        // Save account to local device registry ONLY when fully completed
+        String method = 'email';
+        if (user.providerData.isNotEmpty) {
+          final p = user.providerData.first.providerId;
+          if (p.contains('google')) {
+            method = 'google';
+          } else if (p.contains('phone')) {
+            method = 'phone';
+          }
+        } else if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
+          method = 'phone';
+        }
+
+        await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
+          SavedAccount(
+            uid: user.uid,
+            displayName: user.displayName ?? result.profile.name,
+            identifier: user.email ?? user.phoneNumber ?? result.profile.email ?? 'Athlete',
+            photoUrl: user.photoURL,
+            signInMethod: method,
+            lastUsedAt: DateTime.now(),
+          ),
+        );
+
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Welcome back, ${result.profile.name}! 👋'),
@@ -248,6 +310,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // Save to Firestore
       await ref.read(userProfileServiceProvider).saveUserProfile(updatedProfile);
 
+      // Save to local device registry ONLY NOW that profile is fully complete
+      if (currentUser != null && updatedProfile.isFullyCompleted) {
+        String method = 'email';
+        if (currentUser.providerData.isNotEmpty) {
+          final p = currentUser.providerData.first.providerId;
+          if (p.contains('google')) {
+            method = 'google';
+          } else if (p.contains('phone')) {
+            method = 'phone';
+          }
+        } else if (currentUser.phoneNumber != null && currentUser.phoneNumber!.isNotEmpty) {
+          method = 'phone';
+        }
+
+        await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
+          SavedAccount(
+            uid: currentUser.uid,
+            displayName: updatedProfile.name,
+            identifier: currentUser.email ?? currentUser.phoneNumber ?? updatedProfile.email ?? 'Athlete',
+            photoUrl: currentUser.photoURL,
+            signInMethod: method,
+            lastUsedAt: DateTime.now(),
+          ),
+        );
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -264,41 +352,48 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(userProfileProvider);
 
-    return Theme(
-      data: AppTheme.lightTheme,
-      child: Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.backgroundGradient,
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: ResponsiveWebWrapper(
-            maxWidth: 750,
-            child: Column(
-          children: [
-            // Top Navigation & Page Indicator (Only show for pages 1, 2, 3)
-            if (_currentPage > 0)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleOnboardingBack();
+        }
+      },
+      child: Theme(
+        data: AppTheme.lightTheme,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: AppColors.backgroundGradient,
+          ),
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: ResponsiveWebWrapper(
+                maxWidth: 750,
+                child: Column(
                   children: [
-                    if (_currentPage > 1)
-                      AppBouncyTap(
-                        onTap: _previousPage,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceLight,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
-                        ),
-                      )
-                    else
-                      const SizedBox(width: 36),
+                    // Top Navigation & Page Indicator (Only show for pages 1, 2, 3)
+                    if (_currentPage > 0)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (_currentPage >= 1)
+                              AppBouncyTap(
+                                onTap: _handleOnboardingBack,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceLight,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
+                                ),
+                              )
+                            else
+                              const SizedBox(width: 36),
                     
                     // Dot Indicators for Steps 1, 2, 3
                     Row(
@@ -345,6 +440,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
         ),
       ),
+    ),
     ),
     );
   }
@@ -1781,27 +1877,6 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
       // Sync with Riverpod state immediately so onboarding step pages (Language, Unit, Profile Form) trigger
       ref.read(userProfileProvider.notifier).setProfile(newProfile);
       ref.read(isNewUserProvider.notifier).state = true;
-
-      // Save account to local device AccountRegistryService
-      String method = 'email';
-      if (userToUse.providerData.isNotEmpty) {
-        final p = userToUse.providerData.first.providerId;
-        if (p.contains('google')) {
-          method = 'google';
-        } else if (p.contains('phone')) {
-          method = 'phone';
-        }
-      }
-      await ref.read(accountRegistryServiceProvider).saveOrUpdateAccount(
-        SavedAccount(
-          uid: userToUse.uid,
-          displayName: newProfile.name,
-          identifier: newProfile.email ?? newProfile.phoneNumber ?? chosenUsername,
-          photoUrl: userToUse.photoURL,
-          signInMethod: method,
-          lastUsedAt: DateTime.now(),
-        ),
-      );
 
       // Send Welcome Account Notification / Email
       final recipientEmail = userToUse.email ?? _signUpDraft?.email ?? newProfile.email ?? '';

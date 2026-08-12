@@ -42,6 +42,18 @@ class UserProfile {
   /// Formatted Height e.g. "178 cm" or "5 ft 10 in" based on unitSystem
   String get heightFormatted => UnitConverter.formatHeight(height, unitSystem);
 
+  /// Strict validation whether profile setup has been completely filled out manually by user.
+  bool get isFullyCompleted {
+    return isProfileComplete &&
+        name.trim().isNotEmpty &&
+        name.trim() != 'Athlete' &&
+        phoneNumber != null &&
+        phoneNumber!.trim().isNotEmpty &&
+        age > 0 &&
+        weight > 0 &&
+        height > 0;
+  }
+
   UserProfile copyWith({
     String? uid,
     String? email,
