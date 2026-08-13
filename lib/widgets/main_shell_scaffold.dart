@@ -55,8 +55,8 @@ class MainShellScaffold extends ConsumerWidget {
     final currentUser = FirebaseAuth.instance.currentUser;
     final profile = ref.watch(userProfileProvider);
 
-    // Strict Guard: Redirect incomplete profiles away from main shell to /onboarding
-    if (currentUser != null && !profile.isFullyCompleted) {
+    // Strict Guard: If unauthenticated (currentUser == null) OR profile is incomplete (!profile.isFullyCompleted), redirect to /onboarding
+    if (currentUser == null || !profile.isFullyCompleted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
           context.go('/onboarding');

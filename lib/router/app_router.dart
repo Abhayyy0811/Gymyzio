@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/main_shell_scaffold.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding_screen.dart';
@@ -19,6 +20,16 @@ final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>(d
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/splash',
+  redirect: (context, state) {
+    final location = state.uri.toString();
+    final isSplashOrOnboarding = location == '/splash' || location == '/onboarding';
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (!isSplashOrOnboarding && currentUser == null) {
+      return '/splash';
+    }
+    return null;
+  },
   routes: [
     // 1. Splash Screen
     GoRoute(
