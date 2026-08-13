@@ -128,7 +128,6 @@ class _ExerciseGifWidgetState extends State<ExerciseGifWidget> {
         fit: widget.fit,
         width: widget.width,
         height: widget.height,
-        cacheWidth: 240,
         errorBuilder: (context, error, stackTrace) {
           _handleAssetError(assetCandidates.length);
           return _buildDefaultFallback();
@@ -143,7 +142,6 @@ class _ExerciseGifWidgetState extends State<ExerciseGifWidget> {
         fit: widget.fit,
         width: widget.width,
         height: widget.height,
-        cacheWidth: 240,
         errorBuilder: (context, error, stackTrace) {
           _handleNetworkError(networkCandidates.length);
           return _buildDefaultFallback();
