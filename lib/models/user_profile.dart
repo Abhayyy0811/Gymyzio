@@ -44,11 +44,15 @@ class UserProfile {
 
   /// Strict validation whether profile setup has been completely filled out manually by user.
   bool get isFullyCompleted {
+    final hasAccountIdentifier = (email != null && email!.trim().isNotEmpty) ||
+        (phoneNumber != null && phoneNumber!.trim().isNotEmpty) ||
+        (usernameDisplay != null && usernameDisplay!.trim().isNotEmpty) ||
+        (uid != null && uid!.trim().isNotEmpty);
+
     return isProfileComplete &&
+        hasAccountIdentifier &&
         name.trim().isNotEmpty &&
         name.trim() != 'Athlete' &&
-        phoneNumber != null &&
-        phoneNumber!.trim().isNotEmpty &&
         age > 0 &&
         weight > 0 &&
         height > 0;
