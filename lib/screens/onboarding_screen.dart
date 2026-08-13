@@ -169,6 +169,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
       );
       if (shouldExit == true) {
+        await ref.read(userProfileServiceProvider).deleteUserProfile(currentUser.uid);
         await ref.read(authServiceProvider).signOut();
         if (mounted) {
           setState(() {
@@ -1870,9 +1871,6 @@ class _EmailAuthCardState extends ConsumerState<_EmailAuthCard> {
         usernameLowercase: chosenUsername.toLowerCase(),
         isProfileComplete: false,
       );
-
-      // Save initial registration profile to Firestore with isProfileComplete: false
-      await profileService.saveUserProfile(newProfile);
 
       // Sync with Riverpod state immediately so onboarding step pages (Language, Unit, Profile Form) trigger
       ref.read(userProfileProvider.notifier).setProfile(newProfile);

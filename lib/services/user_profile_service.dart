@@ -16,7 +16,8 @@ class UserProfileService {
       final docSnap = await docRef.get();
 
       if (!docSnap.exists) {
-        // First-time user doc creation (minimal fields)
+        // First-time user: return in-memory initial profile WITHOUT writing to Firestore yet.
+        // The document will only be written to Firestore when the user completes profile setup.
         final initialProfile = UserProfile(
           uid: user.uid,
           email: user.email,
@@ -24,11 +25,6 @@ class UserProfileService {
           name: user.displayName ?? 'Athlete',
           isProfileComplete: false,
         );
-
-        await docRef.set({
-          ...initialProfile.toMap(),
-          'createdAt': FieldValue.serverTimestamp(),
-        });
 
         return (profile: initialProfile, isNewUser: true);
       } else {
