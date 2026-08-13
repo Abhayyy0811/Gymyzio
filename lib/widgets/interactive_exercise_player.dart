@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import '../models/exercise.dart';
 import '../theme/app_theme.dart';
 import 'exercise_gif_widget.dart';
 
-/// Clean & Sleek Exercise Demonstration Player for Gymyzio.
-/// Displays high quality exercise GIFs/Videos continuously at original speed
-/// without extra overlays, play/pause controls, or skeleton filters.
-class InteractiveExercisePlayer extends StatefulWidget {
+/// Clean Exercise Demonstration Display for Gymyzio.
+/// Displays official exercise GIFs continuously at original speed
+/// without MP4 video controllers, play/pause buttons, or skeleton filters.
+class InteractiveExercisePlayer extends StatelessWidget {
   final Exercise exercise;
   final double height;
   final BoxFit fit;
@@ -20,111 +19,15 @@ class InteractiveExercisePlayer extends StatefulWidget {
   });
 
   @override
-  State<InteractiveExercisePlayer> createState() => _InteractiveExercisePlayerState();
-}
-
-class _InteractiveExercisePlayerState extends State<InteractiveExercisePlayer> {
-  VideoPlayerController? _videoController;
-  bool _isVideoInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initVideoController();
-  }
-
-  @override
-  void didUpdateWidget(covariant InteractiveExercisePlayer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.exercise.id != widget.exercise.id ||
-        oldWidget.exercise.videoPath != widget.exercise.videoPath) {
-      _disposeVideoController();
-      _initVideoController();
-    }
-  }
-
-  void _disposeVideoController() {
-    _videoController?.pause();
-    _videoController?.dispose();
-    _videoController = null;
-    _isVideoInitialized = false;
-  }
-
-  Future<void> _initVideoController() async {
-    final nameSanitized = widget.exercise.name
-        .toLowerCase()
-        .replaceAll('°', '')
-        .replaceAll('/', '_')
-        .replaceAll('-', '_')
-        .replaceAll(' ', '_')
-        .replaceAll('__', '_');
-
-    final candidatePaths = <String>[];
-
-    if (widget.exercise.videoPath != null && widget.exercise.videoPath!.trim().isNotEmpty) {
-      candidatePaths.add(widget.exercise.videoPath!.trim());
-    }
-    candidatePaths.add('assets/videos/$nameSanitized.mp4');
-
-    for (final path in candidatePaths) {
-      try {
-        final controller = VideoPlayerController.asset(path);
-        await controller.initialize();
-        controller.setLooping(true);
-        controller.setVolume(0.0);
-        await controller.play();
-
-        if (mounted) {
-          setState(() {
-            _videoController = controller;
-            _isVideoInitialized = true;
-          });
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (widget.exercise.videoPath != null && widget.exercise.videoPath!.startsWith('http')) {
-      try {
-        final controller = VideoPlayerController.networkUrl(Uri.parse(widget.exercise.videoPath!));
-        await controller.initialize();
-        controller.setLooping(true);
-        controller.setVolume(0.0);
-        await controller.play();
-
-        if (mounted) {
-          setState(() {
-            _videoController = controller;
-            _isVideoInitialized = true;
-          });
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (mounted) {
-      setState(() {
-        _isVideoInitialized = false;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _disposeVideoController();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDarkMode(context);
 
-    final primaryTarget = widget.exercise.target?.isNotEmpty == true
-        ? widget.exercise.target!.toUpperCase()
-        : widget.exercise.muscleGroup.toUpperCase();
+    final primaryTarget = exercise.target?.isNotEmpty == true
+        ? exercise.target!.toUpperCase()
+        : exercise.muscleGroup.toUpperCase();
 
     return Container(
-      height: widget.height,
+      height: height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFF1E293B),
@@ -135,28 +38,15 @@ class _InteractiveExercisePlayerState extends State<InteractiveExercisePlayer> {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // 1. Direct GIF / Video Player Layer (Normal original speed & quality)
+          // 1. Direct GIF Player Layer (Normal original dataset GIF at actual speed)
           Positioned.fill(
-            child: _isVideoInitialized && _videoController != null
-                ? FittedBox(
-                    fit: widget.fit,
-                    child: SizedBox(
-                      width: _videoController!.value.size.width > 0
-                          ? _videoController!.value.size.width
-                          : 400,
-                      height: _videoController!.value.size.height > 0
-                          ? _videoController!.value.size.height
-                          : 300,
-                      child: VideoPlayer(_videoController!),
-                    ),
-                  )
-                : ExerciseGifWidget(
-                    assetPath: widget.exercise.assetPath,
-                    gifUrl: widget.exercise.gifUrl,
-                    exerciseId: widget.exercise.id,
-                    exerciseName: widget.exercise.name,
-                    fit: widget.fit,
-                  ),
+            child: ExerciseGifWidget(
+              assetPath: exercise.assetPath,
+              gifUrl: exercise.gifUrl,
+              exerciseId: exercise.id,
+              exerciseName: exercise.name,
+              fit: fit,
+            ),
           ),
 
           // 2. Muscle Target Tag Badge
